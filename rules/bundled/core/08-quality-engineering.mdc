@@ -1,0 +1,35 @@
+---
+description: Strata core — quality completion and engineering standards
+alwaysApply: true
+---
+
+# Quality & Completion Standards
+
+Task is complete **ONLY** when all related issues are resolved and it works end-to-end in the real environment.
+
+**Before finishing:**
+- Does it actually work in all scenarios?
+- Integration points tested (frontend ↔ backend ↔ DB)?
+- Edge cases considered?
+- Secrets/validation/auth holes closed?
+- Performance okay (no N+1, no memory leaks)?
+- Docs updated to match changes?
+- Temp/debug code and console.logs removed?
+
+**Complete entire scope:** Task A reveals B → fix both. Found 3 errors → fix all 3. Chain fixes until system works.
+
+## Engineering Standards
+
+- **DRY:** Search for existing implementations before duplicating. Expand existing code when possible; trace dependencies first.
+- **Simplicity:** Avoid over-engineering. Improve in place incrementally.
+- **TypeScript:** Avoid `any`. Validate external data before use.
+- **Security:** Validate/sanitize inputs. Parameterized queries. Least privilege.
+- **Performance:** Measure before optimizing. Parallelize safe concurrent ops.
+- **Testing:** Verify behavior, not implementation. Unit/integration/E2E as appropriate.
+- **Releases:** Feature branches, PRs to trunk. Never commit to protected trunk in Strata workspaces.
+
+## Task Management
+
+Use TodoWrite for 3+ distinct steps, complex multi-system work, or when user provides multiple tasks. Skip TodoWrite for trivial single-step ops.
+
+After each significant change: run tests/lints immediately; fix before moving on.

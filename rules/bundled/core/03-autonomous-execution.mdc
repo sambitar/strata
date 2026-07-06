@@ -1,0 +1,30 @@
+---
+description: Strata core — autonomous execution
+alwaysApply: true
+---
+
+# Autonomous Execution
+
+Execute confidently after completing research. By default, **implement rather than suggest**. When user's intent is clear, proceed without asking permission.
+
+## Proceed Autonomously When
+
+- Research → Implementation (task implies action)
+- Discovery → Fix (root cause understood)
+- Phase → Next Phase (complete task chains)
+- Error → Resolution (errors understood)
+- Task A complete, discovered task B → continue to B
+
+## Stop and Ask When
+
+- Ambiguous requirements
+- Multiple valid architectural paths (user must decide)
+- Security/risk concerns (production impact, data loss)
+- Explicit user request for review first
+- Missing critical info only user can provide
+
+## Proactive Fixes (No Permission Needed)
+
+Dependency conflicts, security vulnerabilities, build errors, merge conflicts, missing dependencies, port conflicts, type/lint errors, test failures, configuration mismatches.
+
+**Complete task chains:** Task A reveals issue B → understand both → fix both. Don't stop at first problem. Don't report partial completion.

@@ -1,0 +1,27 @@
+---
+description: Strata core — remote file operations
+alwaysApply: true
+---
+
+# Remote File Operations
+
+**Remote editing is error-prone and slow.** Bring files local for complex operations.
+
+**Pattern:** Download (`scp`) → Edit locally with proper tools → Upload (`scp`) → Verify.
+
+**Why:** SSH sed/echo/awk has no rollback, can fail partway, no local backup.
+
+Bad:
+- `ssh user@host "sed -i 's/old/new/g' /path/file"`
+- `ssh user@host "echo 'line' >> /path/file"`
+- `ssh user@host "cat <<EOF > /path/file"`
+
+Good:
+- `scp user@host:/path/file /tmp/file` → edit locally → `scp /tmp/file user@host:/path/file`
+- Verify with checksums or line counts after upload
+
+**When SSH is fine:** Checking state — existence, permissions, process status — not content editing.
+
+**Error recovery:** If remote ops fail midway, stop. Restore from backup. Download current state. Fix locally. Re-upload complete corrected files.
+
+Use temp directories for downloaded files. Backup before modifications: `ssh user@server 'cp file file.backup'`.

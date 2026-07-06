@@ -1,0 +1,59 @@
+---
+description: Strata Request — feature and spec mission protocol (forward-building work)
+alwaysApply: false
+---
+
+# Mission Briefing: Feature Request & Forward-Building Protocol
+
+Use when starting new product work — features, refactors, integrations, or scoped builds. This is **forward-building**, not debug/RCA.
+
+Read `.strata/requests/<name>.md` or the active request brief if one exists. Read `.strata/workspace.json` for stack, goal, and active feature context.
+
+When a Strata Refresh mission is active, defer new feature work until refresh is archived.
+
+---
+
+## Phase 0: Scope & Context
+
+- Read `.strata/memory/summary.md`, `architecture.md`, `decisions.md`, and workspace stack (if set).
+- Clarify goal, acceptance criteria, and out-of-scope items.
+- Identify existing code to extend vs net-new modules.
+- **Output:** Confirmed scope and plan (≤ 100 lines).
+
+---
+
+## Phase 1: Research & Design
+
+- Follow core Research-First protocol for this feature.
+- Map data flow, APIs, schemas, and integration points.
+- Propose minimal design aligned with project conventions.
+- **Output:** Design summary before coding.
+
+---
+
+## Phase 2: Implementation
+
+- Work on the Strata work branch only — never protected trunk.
+- Match existing patterns (lint, tests, naming, folder structure).
+- Update `.strata/memory/todo.md` as tasks complete.
+- **Output:** Working implementation on feature branch.
+
+---
+
+## Phase 3: Verification
+
+- Run relevant tests, lints, and manual checks for acceptance criteria.
+- Fix entire related chains before reporting done.
+- **Output:** Evidence that criteria are met.
+
+---
+
+## Phase 4: Handoff
+
+- Update `.strata/memory/summary.md` and `decisions.md` if significant choices were made.
+- Summarize changes with file references.
+- Ready for **Strata: Publish** when user approves.
+
+---
+
+**Constraint:** Do not patch unrelated bugs mid-feature unless they block acceptance criteria — log them for a separate Refresh mission.

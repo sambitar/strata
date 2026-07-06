@@ -1,0 +1,242 @@
+{
+  "name": "strata",
+  "displayName": "Strata",
+  "description": "Work in workspaces, not branches. AI-native development coordination above Git.",
+  "version": "0.5.12",
+  "publisher": "strata",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sambitar/strata.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": true
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:strata.workspaces",
+    "onCommand:strata.createWorkspace",
+    "onCommand:strata.createFeature",
+    "onCommand:strata.connectRepo",
+    "onCommand:strata.startWorkFromBranch",
+    "onCommand:strata.resumeWork",
+    "onCommand:strata.archiveWork",
+    "onCommand:strata.syncRules",
+    "onCommand:strata.newRefresh",
+    "onCommand:strata.runRetro",
+    "onCommand:strata.publish",
+    "onCommand:strata.openDashboard",
+    "onCommand:strata.testInDevMode",
+    "onCommand:strata.refresh"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "strata",
+          "title": "Strata",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "strata": [
+        {
+          "id": "strata.workspaces",
+          "name": "Workspaces"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "strata.workspaces",
+        "contents": "No workspaces yet.\n[Create Workspace](command:strata.createWorkspace)\n[Connect GitHub](command:strata.connectRepo)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "strata.createWorkspace",
+        "title": "Strata: Create Workspace",
+        "icon": "$(add)"
+      },
+      {
+        "command": "strata.switchWorkspace",
+        "title": "Strata: Switch Workspace"
+      },
+      {
+        "command": "strata.openDashboard",
+        "title": "Strata: Open Dashboard",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "strata.publish",
+        "title": "Strata: Publish",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "strata.openMemory",
+        "title": "Strata: Open Memory File"
+      },
+      {
+        "command": "strata.refresh",
+        "title": "Strata: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "strata.createFeature",
+        "title": "Strata: Create Feature",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "strata.connectRepo",
+        "title": "Strata: Connect GitHub",
+        "icon": "$(github)"
+      },
+      {
+        "command": "strata.startWorkFromBranch",
+        "title": "Strata: Start Work From Branch"
+      },
+      {
+        "command": "strata.resumeWork",
+        "title": "Strata: Resume Work",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "strata.archiveWork",
+        "title": "Strata: Archive Work",
+        "icon": "$(archive)"
+      },
+      {
+        "command": "strata.syncRules",
+        "title": "Strata: Sync Cursor Rules",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "strata.newRefresh",
+        "title": "Strata: New Refresh (RCA)",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "strata.archiveRefresh",
+        "title": "Strata: Archive Refresh"
+      },
+      {
+        "command": "strata.runRetro",
+        "title": "Strata: Run Retro",
+        "icon": "$(history)"
+      },
+      {
+        "command": "strata.archiveRetro",
+        "title": "Strata: Archive Retro"
+      },
+      {
+        "command": "strata.newFeatureRequest",
+        "title": "Strata: New Feature Request"
+      },
+      {
+        "command": "strata.setEnvironment",
+        "title": "Strata: Set Environment"
+      },
+      {
+        "command": "strata.testInDevMode",
+        "title": "Strata: Test in Dev Mode",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "strata.archivePreview",
+        "title": "Strata: Archive Preview Test",
+        "icon": "$(debug-stop)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "strata.createWorkspace",
+          "when": "view == strata.workspaces",
+          "group": "navigation"
+        },
+        {
+          "command": "strata.refresh",
+          "when": "view == strata.workspaces",
+          "group": "navigation"
+        },
+        {
+          "command": "strata.openDashboard",
+          "when": "view == strata.workspaces",
+          "group": "navigation"
+        },
+        {
+          "command": "strata.createFeature",
+          "when": "view == strata.workspaces",
+          "group": "navigation"
+        },
+        {
+          "command": "strata.connectRepo",
+          "when": "view == strata.workspaces",
+          "group": "navigation"
+        },
+        {
+          "command": "strata.publish",
+          "when": "view == strata.workspaces",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Strata",
+      "properties": {
+        "strata.openDashboardOnSwitch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open workspace dashboard when switching workspaces"
+        },
+        "strata.openFolderOnSwitch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open workspace folder when switching workspaces"
+        },
+        "strata.autoCreatePr": {
+          "type": "boolean",
+          "default": true,
+          "description": "After publish, create a GitHub pull request via gh CLI (requires gh auth login)"
+        },
+        "strata.rulesInstallMode": {
+          "type": "string",
+          "enum": ["copy", "symlink", "off"],
+          "default": "copy",
+          "description": "How Strata installs Cursor rules into .cursor/rules/ (copy, symlink, or off)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "compile": "npm run build",
+    "package": "npm run build && vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.29.0",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.5.2"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "simple-git": "^3.27.0"
+  }
+}

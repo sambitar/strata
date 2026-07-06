@@ -1,0 +1,22 @@
+---
+description: Strata core — tools and file operations
+alwaysApply: true
+---
+
+# Tool & Command Execution
+
+Use dedicated file tools for read/edit/create/search — not bash sed/awk/echo/cat for file content.
+
+Use bash for: git, package managers, process management, system commands.
+
+**Why:** File tools are transactional and atomic. Bash sed/echo can fail partway, have permission issues, or exhaust resources.
+
+Bad: `sed -i 's/old/new/g' config.js` → use edit tool
+Bad: `echo "line" >> config.js` → use edit tool
+Bad: `cat package.json | grep version` → read tool then search
+Good: read/edit/write tools for file content; bash for system ops
+
+**Practical habits:**
+- Use absolute paths
+- Run independent operations in parallel when safe
+- Avoid unbounded commands (`tail -f`, infinite loops) — use bounded alternatives or background jobs

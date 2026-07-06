@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+  <title>Strata Dashboard</title>
+  <style>
+    :root {
+      --bg: var(--vscode-editor-background, #1e1e1e);
+      --fg: var(--vscode-editor-foreground, #cccccc);
+      --muted: var(--vscode-descriptionForeground, #999);
+      --border: var(--vscode-panel-border, #444);
+      --accent: var(--vscode-button-background, #0e639c);
+      --accent-fg: var(--vscode-button-foreground, #fff);
+      --card: var(--vscode-sideBar-background, #252526);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--vscode-font-family, system-ui, sans-serif);
+      font-size: var(--vscode-font-size, 13px);
+      background: var(--bg);
+      color: var(--fg);
+      padding: 24px;
+      line-height: 1.5;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 { font-size: 22px; font-weight: 600; }
+    .badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge.production { background: #7f1d1d; color: #fecaca; }
+    .badge.feature { background: #1e3a8a; color: #bfdbfe; }
+    .badge.experiment { background: #581c87; color: #e9d5ff; }
+    .badge.development { background: #14532d; color: #bbf7d0; }
+    section { margin-bottom: 24px; }
+    section h2 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .goal {
+      font-size: 16px;
+      padding: 12px 16px;
+      background: var(--card);
+      border-radius: 8px;
+      border-left: 3px solid var(--accent);
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .stat {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+    }
+    .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .stat-value { font-size: 14px; font-weight: 500; }
+    .memory-links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .memory-links button {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .memory-links button:hover { border-color: var(--accent); }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .actions button {
+      padding: 10px 18px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .btn-primary { background: var(--accent); color: var(--accent-fg); }
+    .btn-secondary {
+      background: var(--card);
+      color: var(--fg);
+      border: 1px solid var(--border) !important;
+    }
+    .empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+    .remote-card {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+    }
+    .remote-card.connected { border-left: 3px solid #22c55e; }
+    .remote-card.disconnected { border-left: 3px solid #f59e0b; }
+    .remote-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .remote-meta { font-size: 12px; color: var(--muted); }
+    .remote-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 12px;
+    }
+    .remote-link:hover { text-decoration: underline; }
+    .check-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .check-badge.success { background: #14532d; color: #bbf7d0; }
+    .check-badge.pending { background: #713f12; color: #fde68a; }
+    .check-badge.failure { background: #7f1d1d; color: #fecaca; }
+    .check-badge.none { background: var(--card); color: var(--muted); border: 1px solid var(--border); }
+    .branch-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .branch-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+    .branch-item.current { border-left: 3px solid var(--accent); }
+    .branch-item.clickable {
+      cursor: pointer;
+    }
+    .branch-item.clickable:hover {
+      border-color: var(--accent);
+    }
+    .safety-banner {
+      background: #7f1d1d;
+      color: #fecaca;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+    .safety-banner.ok {
+      background: #14532d;
+      color: #bbf7d0;
+    }
+    .branch-tag { color: var(--muted); font-size: 11px; }
+    .mission-card {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      margin-bottom: 8px;
+    }
+    .mission-card.retro { border-left-color: #a855f7; }
+    .stack-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .stack-intro {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .stack-field label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stack-field input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 13px;
+    }
+    .stack-field input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .stack-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .stack-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .stack-chip {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .stack-chip strong { color: var(--fg); font-weight: 500; }
+    .stack-detected-banner {
+      background: #1e3a8a;
+      color: #bfdbfe;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    .stack-field-hint {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .stack-field-hint.detected { color: #93c5fd; }
+    .preview-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .preview-intro {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .preview-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .preview-meta code {
+      font-size: 11px;
+    }
+    .preview-running {
+      background: #14532d;
+      color: #bbf7d0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="empty">Loading workspace...</div>
+  </div>
+  <script>
+    const vscode = acquireVsCodeApi();
+
+    function render(state) {
+      const app = document.getElementById("app");
+      if (!state) {
+        app.innerHTML = '<div class="empty"><p>No active workspace.</p><p>Use the Strata sidebar to create or switch a workspace.</p></div>';
+        return;
+      }
+
+      const gitDelta = state.gitAhead > 0
+        ? state.gitAhead + " ahead"
+        : state.gitBehind > 0
+          ? state.gitBehind + " behind"
+          : "Up to date";
+
+      const memoryButtons = (state.memoryFiles || [])
+        .map(f => '<button data-memory="' + f + '">' + f.replace(".md", "") + '</button>')
+        .join("");
+
+      const featureSection = state.featureName
+        ? '<section><h2>Active Feature</h2><div class="goal"><strong>' +
+          escapeHtml(state.featureName) + '</strong><br><span style="color:var(--muted)">' +
+          escapeHtml(state.featureBranch || state.gitBranch) + '</span>' +
+          (state.featurePrUrl ? '<br><a class="remote-link" href="' + escapeHtml(state.featurePrUrl) + '" target="_blank">Open pull request</a>' : '') +
+          '</div></section>'
+        : '<section><h2>Active Feature</h2><div class="goal" style="border-left-color:var(--muted)">No feature started — click Create Feature below.</div></section>';
+
+      const remoteSection = renderRemoteSection(state);
+      const branchSection = renderBranchSection(state);
+      const safetySection = renderSafetySection(state);
+      const historySection = renderWorkHistorySection(state);
+      const missionsSection = renderMissionsSection(state);
+      const stackSection = renderStackSection(state);
+      const previewSection = renderPreviewSection(state);
+
+      const previewAction = state.activePreview
+        ? '<button class="btn-secondary" id="btn-archive-preview">Archive Test</button>'
+        : '<button class="btn-primary" id="btn-test-dev">Test in Dev Mode</button>';
+
+      const workActions = state.featureName
+        ? '<button class="btn-secondary" id="btn-resume">Resume Work</button>' +
+          '<button class="btn-secondary" id="btn-archive">Archive Work</button>'
+        : '';
+
+      const connectAction = state.githubConnected
+        ? ""
+        : '<button class="btn-secondary" id="btn-connect">Connect GitHub</button>';
+
+      app.innerHTML =
+        '<div class="header">' +
+          '<h1>' + state.environmentIcon + ' ' + escapeHtml(state.name) + '</h1>' +
+          '<span class="badge ' + state.environment + '">' + escapeHtml(state.environmentLabel) + '</span>' +
+        '</div>' +
+        safetySection +
+        missionsSection +
+        previewSection +
+        remoteSection +
+        branchSection +
+        historySection +
+        featureSection +
+        stackSection +
+        '<section><h2>Current Goal</h2><div class="goal">' + escapeHtml(state.currentGoal) + '</div></section>' +
+        '<section><h2>Status</h2><div class="status-grid">' +
+          '<div class="stat"><div class="stat-label">Git</div><div class="stat-value">' + escapeHtml(state.gitBranch) + ' · ' + gitDelta + '</div></div>' +
+          '<div class="stat"><div class="stat-label">Changes</div><div class="stat-value">' + state.changesFiles + ' files</div></div>' +
+          '<div class="stat"><div class="stat-label">AI</div><div class="stat-value">' + escapeHtml(state.aiLastActive) + '</div></div>' +
+          '<div class="stat"><div class="stat-label">Worktree</div><div class="stat-value">' + (state.gitClean ? "Clean" : "Modified") + '</div></div>' +
+        '</div></section>' +
+        '<section><h2>Memory</h2><div class="memory-links">' + memoryButtons + '</div></section>' +
+        '<section><h2>Actions</h2><div class="actions">' +
+          previewAction +
+          workActions +
+          '<button class="btn-secondary" id="btn-feature">Create Feature</button>' +
+          connectAction +
+          '<button class="btn-primary" id="btn-publish">Publish</button>' +
+        '</div></section>';
+
+      document.querySelectorAll("[data-memory]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          vscode.postMessage({ type: "openMemory", file: btn.getAttribute("data-memory") });
+        });
+      });
+      document.getElementById("btn-feature")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "createFeature" });
+      });
+      document.getElementById("btn-connect")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "connectRepo" });
+      });
+      document.getElementById("btn-resume")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "resumeWork" });
+      });
+      document.getElementById("btn-archive")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "archiveWork" });
+      });
+      document.getElementById("btn-refresh")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "newRefresh" });
+      });
+      document.getElementById("btn-archive-refresh")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "archiveRefresh" });
+      });
+      document.getElementById("btn-retro")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "runRetro" });
+      });
+      document.getElementById("btn-archive-retro")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "archiveRetro" });
+      });
+      document.getElementById("btn-publish")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "publish" });
+      });
+      document.querySelectorAll("[data-start-branch]").forEach(function(el) {
+        el.addEventListener("click", function() {
+          vscode.postMessage({
+            type: "startWorkFromBranch",
+            sourceBranch: el.getAttribute("data-start-branch"),
+            isRemote: el.getAttribute("data-is-remote") === "true",
+            remote: el.getAttribute("data-remote") || "origin",
+          });
+        });
+      });
+      document.querySelectorAll("[data-resume-branch]").forEach(function(el) {
+        el.addEventListener("click", function() {
+          vscode.postMessage({
+            type: "resumeWork",
+            branch: el.getAttribute("data-resume-branch") || undefined,
+          });
+        });
+      });
+
+      document.getElementById("btn-save-stack")?.addEventListener("click", () => {
+        const stack = {};
+        (state.stackFields || []).forEach(function(field) {
+          const input = document.getElementById("stack-" + field.key);
+          if (input) {
+            stack[field.key] = input.value.trim();
+          }
+        });
+        vscode.postMessage({ type: "saveStack", stack: stack });
+      });
+
+      document.getElementById("btn-test-dev")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "testInDevMode" });
+      });
+      document.getElementById("btn-archive-preview")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "archivePreview" });
+      });
+    }
+
+    function renderPreviewSection(state) {
+      const active = state.activePreview;
+
+      if (active) {
+        const targetChips = (active.targets || []).map(function(t) {
+          return '<span class="stack-chip"><strong>' + escapeHtml(t.label) +
+            '</strong> · ' + escapeHtml(t.root) + '/ · ' + t.fileCount + ' files</span>';
+        }).join("");
+
+        const targetsBlock = targetChips
+          ? '<div class="stack-summary" style="margin:12px 0">' + targetChips + '</div>'
+          : '<div class="preview-meta">Agent will discover targets from repo.</div>';
+
+        return '<section><h2>Test</h2><div class="preview-card">' +
+          '<div class="preview-running">Agent preview mission active</div>' +
+          '<div class="preview-intro"><strong>Focus:</strong> ' + escapeHtml(active.focus) + '</div>' +
+          targetsBlock +
+          '<div class="preview-meta">Only selected apps will be previewed — see <code>.strata/preview/current.md</code></div>' +
+          '</div></section>';
+      }
+
+      return '<section><h2>Test</h2><div class="preview-card">' +
+        '<div class="preview-intro">Strata scans <strong>your git changes and open files</strong>, maps them to app folders (web, mobile, backend…), and asks what to test. The agent previews only that — not the whole monorepo.</div>' +
+        '<div class="preview-meta">Working on web + API? Pick both. Mobile untouched? It stays out.</div>' +
+        '<div class="actions" style="margin-top:12px">' +
+        '<button class="btn-primary" id="btn-test-dev">Test in Dev Mode</button>' +
+        '</div></div></section>';
+    }
+
+    function renderStackSection(state) {
+      const fields = state.stackFields || [];
+      const stack = state.stack || {};
+      const fieldSources = state.stackFieldSources || {};
+      const setFields = fields.filter(function(f) {
+        return stack[f.key] && String(stack[f.key]).trim();
+      });
+
+      const summary = setFields.length > 0
+        ? '<div class="stack-summary">' + setFields.map(function(f) {
+            return '<span class="stack-chip"><strong>' + escapeHtml(f.label) + ':</strong> ' +
+              escapeHtml(String(stack[f.key])) + '</span>';
+          }).join("") + '</div>'
+        : '';
+
+      let banner = "";
+      if (state.stackDetectedFromProject) {
+        const sources = (state.stackDetectionSources || []).join(", ");
+        const savedNote = state.stackAutoSaved
+          ? " Detected values were saved to this workspace."
+          : "";
+        banner = '<div class="stack-detected-banner">Detected from project files (' +
+          escapeHtml(sources) + ")." + escapeHtml(savedNote) + "</div>";
+      }
+
+      const inputs = fields.map(function(field) {
+        const value = stack[field.key] ? String(stack[field.key]) : "";
+        const listId = "stack-options-" + field.key;
+        const options = (field.options || []).map(function(opt) {
+          return '<option value="' + escapeHtml(opt) + '"></option>';
+        }).join("");
+        const source = fieldSources[field.key];
+        const hint = source === "detected"
+          ? '<div class="stack-field-hint detected">Detected from project</div>'
+          : source === "saved"
+            ? '<div class="stack-field-hint">Saved manually</div>'
+            : "";
+        return '<div class="stack-field">' +
+          '<label for="stack-' + field.key + '">' + escapeHtml(field.label) + '</label>' +
+          '<input id="stack-' + field.key + '" list="' + listId + '" ' +
+          'placeholder="' + escapeHtml(field.placeholder) + '" value="' + escapeHtml(value) + '" />' +
+          '<datalist id="' + listId + '">' + options + '</datalist>' +
+          hint +
+          '</div>';
+      }).join("");
+
+      return '<section><h2>Technology Stack</h2><div class="stack-card">' +
+        '<div class="stack-intro">Optional — pick from suggestions or type anything. When code exists in the repo, Strata detects stack from manifest files and saves it automatically.</div>' +
+        banner +
+        summary +
+        '<div class="stack-grid">' + inputs + '</div>' +
+        '<div class="stack-actions">' +
+          '<button class="btn-primary" id="btn-save-stack">Save Stack</button>' +
+        '</div></div></section>';
+    }
+
+    function renderMissionsSection(state) {
+      const refresh = state.activeRefresh;
+      const retro = state.activeRetro;
+
+      let html = '<section><h2>Agent Missions</h2>';
+
+      if (refresh) {
+        html += '<div class="mission-card"><strong>Refresh:</strong> ' +
+          escapeHtml(refresh.title) + '<br><span class="remote-meta">Phase ' +
+          refresh.phase + ' · started ' + escapeHtml(refresh.startedAt) + '</span></div>' +
+          '<div class="actions" style="margin-top:10px">' +
+          '<button class="btn-secondary" id="btn-archive-refresh">Archive Refresh</button>' +
+          '</div>';
+      } else if (retro) {
+        html += '<div class="mission-card retro"><strong>Retro active</strong><br><span class="remote-meta">Started ' +
+          escapeHtml(retro.startedAt) + '</span></div>' +
+          '<div class="actions" style="margin-top:10px">' +
+          '<button class="btn-secondary" id="btn-archive-retro">Archive Retro</button>' +
+          '</div>';
+      } else {
+        html += '<div class="remote-meta" style="margin-bottom:10px">Optional — RCA for persistent bugs, or Retro at end of session.</div>' +
+          '<div class="actions">' +
+          '<button class="btn-secondary" id="btn-refresh">New Refresh</button>' +
+          '<button class="btn-secondary" id="btn-retro">Run Retro</button>' +
+          '</div>';
+      }
+
+      html += '</section>';
+      return html;
+    }
+
+    function renderSafetySection(state) {
+      if (state.trunkLocked && state.safetyWarning) {
+        return '<div class="safety-banner">' + escapeHtml(state.safetyWarning) + '</div>';
+      }
+      if (state.featureBranch && state.featureBranch === state.activeWorkBranch) {
+        return '<div class="safety-banner ok">Safe work mode — publishing only to <strong>' +
+          escapeHtml(state.featureBranch) + '</strong>. Protected branches will not be modified.</div>';
+      }
+      if (state.safetyWarning) {
+        return '<div class="safety-banner">' + escapeHtml(state.safetyWarning) + '</div>';
+      }
+      return '';
+    }
+
+    function renderWorkHistorySection(state) {
+      const history = state.workHistory || [];
+      if (history.length === 0) {
+        return '';
+      }
+      const items = history.map(function(session) {
+        const pr = session.prUrl
+          ? ' <a class="remote-link" href="' + escapeHtml(session.prUrl) + '" target="_blank">PR</a>'
+          : '';
+        return '<div class="branch-item clickable" data-resume-branch="' + escapeHtml(session.branch) + '">' +
+          '<span><strong>' + escapeHtml(session.name) + '</strong><br><span class="remote-meta">' +
+          escapeHtml(session.branch) + ' · ' + escapeHtml(session.status) + pr + '</span></span></div>';
+      }).join("");
+      return '<section><h2>Work History</h2><div class="branch-list">' + items + '</div></section>';
+    }
+
+    function renderBranchSection(state) {
+      const branches = state.branches || [];
+      if (branches.length === 0) {
+        return '<section><h2>Branches</h2><div class="remote-card disconnected"><div class="remote-meta">No branches loaded. Connect GitHub first.</div></div></section>';
+      }
+
+      const intro = '<p class="remote-meta" style="margin-bottom:10px">Click a branch to fork new work. Strata never edits existing branches.</p>';
+      const items = branches.map(function(branch) {
+        const isActiveWork = state.activeWorkBranch === branch.name && branch.isCurrent;
+        const tags = [];
+        if (isActiveWork) tags.push("your work");
+        else if (branch.isProtected) tags.push("protected");
+        else if (branch.isRemote) tags.push("remote");
+        const tagHtml = tags.length ? '<span class="branch-tag">' + tags.join(" · ") + '</span>' : "";
+        const clickable = !isActiveWork;
+        const attrs = clickable
+          ? ' data-start-branch="' + escapeHtml(branch.name) + '" data-is-remote="' + branch.isRemote + '" data-remote="origin" class="branch-item clickable' + (isActiveWork ? " current" : "") + '"'
+          : ' class="branch-item' + (isActiveWork ? " current" : "") + '"';
+        return '<div' + attrs + '><span>' + escapeHtml(branch.name) + '</span>' + tagHtml + '</div>';
+      }).join("");
+
+      return '<section><h2>Branches</h2>' + intro + '<div class="branch-list">' + items + '</div></section>';
+    }
+
+    function renderRemoteSection(state) {
+      const connected = state.githubConnected;
+      const cardClass = connected ? "connected" : "disconnected";
+      const title = connected
+        ? escapeHtml(state.githubRepo || "GitHub")
+        : "Not connected to GitHub";
+
+      let body = "";
+      if (connected) {
+        const repoLink = state.githubRemoteUrl
+          ? '<a class="remote-link" href="' + escapeHtml(state.githubRemoteUrl) + '" target="_blank">' + escapeHtml(state.githubRepo || "View repo") + '</a>'
+          : escapeHtml(state.githubRepo || "GitHub repo");
+        const prLine = state.githubPrUrl
+          ? '<div class="remote-row"><span class="remote-meta">Pull request</span><a class="remote-link" href="' + escapeHtml(state.githubPrUrl) + '" target="_blank">#' + (state.githubPrNumber || "PR") + ' · ' + escapeHtml(state.githubPrState || "OPEN") + '</a></div>'
+          : '<div class="remote-row"><span class="remote-meta">Pull request</span><span class="remote-meta">None — publish to create one</span></div>';
+        const checkClass = state.githubChecksState || "none";
+        body =
+          '<div class="remote-meta">' + repoLink + '</div>' +
+          prLine +
+          '<div class="remote-row"><span class="remote-meta">CI</span><span class="check-badge ' + checkClass + '">' + escapeHtml(state.githubChecksSummary || "No checks") + '</span></div>';
+      } else {
+        body =
+          '<div class="remote-meta">Link an existing repo, clone from GitHub, or create a new repo.</div>' +
+          (!state.githubGhAvailable
+            ? '<div class="remote-meta" style="margin-top:8px">Install <code>gh</code> for PR creation and repo setup.</div>'
+            : !state.githubGhAuthenticated
+              ? '<div class="remote-meta" style="margin-top:8px">Run <code>gh auth login</code> to enable PRs.</div>'
+              : "");
+      }
+
+      return '<section><h2>GitHub</h2><div class="remote-card ' + cardClass + '"><strong>' + title + '</strong>' + body + '</div></section>';
+    }
+
+    function escapeHtml(text) {
+      const d = document.createElement("div");
+      d.textContent = text;
+      return d.innerHTML;
+    }
+
+    window.addEventListener("message", (event) => {
+      const msg = event.data;
+      if (msg.type === "state") {
+        render(msg.payload);
+      }
+    });
+
+    vscode.postMessage({ type: "ready" });
+  </script>
+</body>
+</html>

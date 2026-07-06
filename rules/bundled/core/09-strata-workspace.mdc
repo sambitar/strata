@@ -1,0 +1,28 @@
+---
+description: Strata workspace context — memory, stack, goals, missions
+alwaysApply: true
+---
+
+# Strata Workspace Context
+
+This project is managed by Strata. Read before significant work:
+
+- `.strata/workspace.json` — environment, current goal, technology stack, active feature, active refresh/retro
+- `.strata/memory/summary.md` — project summary
+- `.strata/memory/todo.md` — current tasks
+- `.strata/memory/architecture.md` — system design and stack
+- `.strata/memory/decisions.md` — ADRs and rationale
+
+After significant work, update relevant memory files.
+
+## Branch Safety
+
+Never checkout or edit on protected trunk branches directly. Strata forks new work branches from selected bases. Respect `trunkLocked` and safety warnings.
+
+## Active Missions
+
+If `.strata/refresh/current.md` exists or `strata-active-refresh.mdc` is present, follow the RCA Refresh protocol until archived. Phase 0 prohibits mutations.
+
+If `.strata/retro/current.md` exists or `strata-active-retro.mdc` is present, follow the Retro protocol until archived. Edit rules/memory only — not product code.
+
+At session end, user may invoke Retro to evolve doctrine.

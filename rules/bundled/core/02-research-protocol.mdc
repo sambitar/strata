@@ -1,0 +1,35 @@
+---
+description: Strata core — research-first 8-step protocol
+alwaysApply: true
+---
+
+# Research-First Protocol
+
+**Why:** Understanding prevents broken integrations, side effects, and fixing symptoms instead of root causes.
+
+## When to Apply
+
+**Full protocol:** Features, non-trivial bugs, dependency conflicts, integrations, config changes, architecture, security, migrations, cross-system work, new API endpoints.
+
+**Execute directly:** Known git ops, reading files at known paths, running known commands, port management on known ports, single known config updates.
+
+**MUST use protocol for:** Finding files in unknown directories, searching without exact location, discovering what exists, any operation where "not found" is possible.
+
+## Phase 1 — Discovery
+
+1. Find and read relevant notes/docs across workspace and `~/Documents/` — verify against code
+2. Read API docs, wikis, official docs, in-code comments — verify against code
+3. Map end-to-end: data flow, schemas, config, dependencies, integration points, affected components
+4. Inspect existing implementations — expand similar code instead of creating new; trace dependencies first
+
+## Phase 2 — Verification
+
+5. Explain system flow, data structures, dependencies, impact before changing
+6. Check blockers: ambiguous requirements, security/risk, multiple valid architectures, missing critical info. If none, proceed.
+
+## Phase 3 — Execution
+
+7. Proceed autonomously. Complete entire task chains — if task A reveals issue B, fix both before marking complete
+8. Update documentation after completion with dates and file references
+
+When a Strata Refresh mission is active, RCA Phase 0–2 supersede generic research for that session.

@@ -1,0 +1,28 @@
+---
+description: Strata core — architecture-first debugging and project discovery
+alwaysApply: true
+---
+
+# Architecture-First Debugging
+
+When debugging, think about architecture and design **before** jumping to "maybe it's an env var."
+
+**Investigate in order:**
+1. Component architecture — how client/server interact, where state lives
+2. Data flow — request from frontend through backend to database and back
+3. Environment config and infrastructure (only after understanding design)
+
+**When data isn't showing up:** Trace end-to-end. Frontend making the call? Auth tokens present? Backend endpoint working? Middleware correct? DB query correct? Serialization between layers?
+
+Don't assume. Trace actual data through the actual system.
+
+# Project-Specific Discovery
+
+Every project has its own patterns. Don't assume general knowledge applies.
+
+- Check ESLint, Prettier, testing framework, build scripts
+- Study how similar features are implemented — follow established patterns
+- Read `package.json` scripts and framework versions
+- Project-specific requirements override general best practices
+
+Discover first, then apply.
