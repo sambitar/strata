@@ -1,0 +1,39 @@
+{
+  "id": "strata",
+  "name": "strata",
+  "environment": "feature",
+  "currentGoal": "Build Enforce Structure",
+  "git": {
+    "trunk": "main",
+    "branch": "work/2026-07-14-enforce-structure-from-main",
+    "remote": "origin"
+  },
+  "ai": {
+    "lastActiveAt": "2026-07-14T17:33:45.679Z"
+  },
+  "createdAt": "2026-07-14T17:11:02.892Z",
+  "stack": {
+    "frontend": "React",
+    "backend": "Node.js",
+    "framework": "VS Code Extension",
+    "language": "TypeScript",
+    "runtime": "Node.js",
+    "database": null,
+    "orm": null,
+    "api": null,
+    "styling": null,
+    "auth": null,
+    "hosting": null,
+    "testing": null
+  },
+  "currentFeature": {
+    "id": "enforce-structure",
+    "name": "Enforce Structure",
+    "goal": "Build Enforce Structure",
+    "scope": [],
+    "branch": "work/2026-07-14-enforce-structure-from-main",
+    "sourceBranch": "main",
+    "startedAt": "2026-07-14T17:33:45.679Z",
+    "status": "active"
+  }
+}
