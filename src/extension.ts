@@ -8,6 +8,7 @@ import { PreviewWorksetService } from "./services/preview-workset-service";
 import { PublishService } from "./services/publish-service";
 import { RulesService, ensureStrataHome } from "./services/rules-service";
 import { StatusService } from "./services/status-service";
+import { ensureStructureAllowsAction } from "./services/structure-gate";
 import { WorkspaceService } from "./services/workspace-service";
 import { ThemeService } from "./theme/theme-service";
 import { DashboardPanel } from "./ui/dashboard/dashboard-panel";
@@ -44,7 +45,7 @@ async function activateStrata(
   context: vscode.ExtensionContext,
 ): Promise<void> {
   const output = vscode.window.createOutputChannel("Strata");
-  output.appendLine("Strata v0.5.12 activated.");
+  output.appendLine("Strata v0.6.0 activated.");
   context.subscriptions.push(output);
 
   ensureStrataHome();
@@ -111,7 +112,16 @@ async function activateStrata(
     vscode.commands.registerCommand("strata.openDashboard", (workspaceId?: string) =>
       openDashboard(workspaceId),
     ),
-    vscode.commands.registerCommand("strata.publish", () => publishPanel.show()),
+    vscode.commands.registerCommand("strata.publish", () => runPublish()),
+    vscode.commands.registerCommand("strata.detectStructure", () =>
+      detectStructure(),
+    ),
+    vscode.commands.registerCommand("strata.lockStructure", () =>
+      lockStructure(),
+    ),
+    vscode.commands.registerCommand("strata.unlockStructure", () =>
+      unlockStructure(),
+    ),
     vscode.commands.registerCommand(
       "strata.openMemory",
       (workspaceId: string, file: MemoryFileName) =>
@@ -154,6 +164,20 @@ async function activateStrata(
     ),
     vscode.commands.registerCommand("strata.testInDevMode", () => testInDevMode()),
     vscode.commands.registerCommand("strata.archivePreview", () => archivePreview()),
+    vscode.commands.registerCommand("strata.startMultiAgentCrew", () =>
+      startMultiAgentCrew(),
+    ),
+    vscode.commands.registerCommand("strata.copyCrewLanePrompt", (laneId?: string) =>
+      copyCrewLanePrompt(laneId),
+    ),
+    vscode.commands.registerCommand(
+      "strata.setCrewLaneStatus",
+      (laneId?: string, status?: string) => setCrewLaneStatus(laneId, status),
+    ),
+    vscode.commands.registerCommand("strata.copyCrewIntegratorPrompt", () =>
+      copyCrewIntegratorPrompt(),
+    ),
+    vscode.commands.registerCommand("strata.archiveCrew", () => archiveCrew()),
   );
 
   await workspaceService.ensureActiveForOpenFolder();
@@ -352,6 +376,16 @@ async function createFeature(): Promise<void> {
     );
     return;
   }
+
+  const gated = await ensureStructureAllowsAction(
+    workspaceService,
+    workspace,
+    "creating a feature",
+  );
+  if (!gated) {
+    return;
+  }
+  workspace = gated;
 
   const name = await vscode.window.showInputBox({
     prompt: "Feature name",
@@ -577,6 +611,85 @@ async function syncRules(): Promise<void> {
   }
 }
 
+async function runPublish(): Promise<void> {
+  const workspace = workspaceService.getActive();
+  if (!workspace) {
+    void vscode.window.showWarningMessage(
+      "No active workspace. Create or switch to a workspace first.",
+    );
+    return;
+  }
+
+  const gated = await ensureStructureAllowsAction(
+    workspaceService,
+    workspace,
+    "publishing",
+  );
+  if (!gated) {
+    return;
+  }
+
+  await publishPanel.show();
+}
+
+async function detectStructure(): Promise<void> {
+  const workspace = await requireActiveWorkspace();
+  if (!workspace) {
+    return;
+  }
+
+  try {
+    const { workspace: updated, persisted } =
+      workspaceService.syncStructureFromProject(workspace, "overwrite");
+    void vscode.window.showInformationMessage(
+      persisted
+        ? `Structure detected (${updated.structure?.services.length ?? 0} service(s), layout: ${updated.structure?.layout ?? "unknown"}).`
+        : "Structure detection complete — no changes.",
+    );
+    await refreshAll();
+    await dashboardPanel.show(updated.id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    void vscode.window.showErrorMessage(message);
+  }
+}
+
+async function lockStructure(): Promise<void> {
+  const workspace = await requireActiveWorkspace();
+  if (!workspace) {
+    return;
+  }
+
+  try {
+    const updated = workspaceService.lockStructure(workspace);
+    void vscode.window.showInformationMessage(
+      `Structure contract locked (${updated.structure?.services.length ?? 0} service(s)).`,
+    );
+    await refreshAll();
+    await dashboardPanel.show(updated.id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    void vscode.window.showErrorMessage(message);
+  }
+}
+
+async function unlockStructure(): Promise<void> {
+  const workspace = await requireActiveWorkspace();
+  if (!workspace) {
+    return;
+  }
+
+  try {
+    const updated = workspaceService.unlockStructure(workspace);
+    void vscode.window.showInformationMessage("Structure contract unlocked.");
+    await refreshAll();
+    await dashboardPanel.show(updated.id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    void vscode.window.showErrorMessage(message);
+  }
+}
+
 async function newRefresh(): Promise<void> {
   const workspace = await requireActiveWorkspace();
   if (!workspace) {
@@ -772,42 +885,52 @@ async function startWorkFromBranch(
     return;
   }
 
-  const name = await vscode.window.showInputBox({
-    prompt: `What are you building? (from ${sourceBranch})`,
-    placeHolder: "e.g. Auth flow update",
-    validateInput: (value) =>
-      value.trim() ? null : "Work name is required",
-  });
-  if (!name) {
-    return;
-  }
-
-  const goal = await vscode.window.showInputBox({
-    prompt: "What should this accomplish?",
-    value: `Build ${name.trim()}`,
-    validateInput: (value) =>
-      value.trim() ? null : "Goal is required",
-  });
-  if (!goal) {
-    return;
-  }
-
-  const defaultBranch = defaultWorkBranchName(name.trim(), sourceBranch);
-  const branch = await vscode.window.showInputBox({
-    prompt: "New work branch on GitHub (never reuses an existing branch)",
-    value: defaultBranch,
-    validateInput: (value) =>
-      value.trim() ? null : "Branch name is required",
-  });
-  if (!branch) {
-    return;
-  }
-
   try {
     let active =
       workspaceService.getActive()?.id === workspaceId
         ? workspaceService.getActive()!
         : await workspaceService.switch(workspace.id);
+
+    const gated = await ensureStructureAllowsAction(
+      workspaceService,
+      active,
+      "starting work",
+    );
+    if (!gated) {
+      return;
+    }
+    active = gated;
+
+    const name = await vscode.window.showInputBox({
+      prompt: `What are you building? (from ${sourceBranch})`,
+      placeHolder: "e.g. Auth flow update",
+      validateInput: (value) =>
+        value.trim() ? null : "Work name is required",
+    });
+    if (!name) {
+      return;
+    }
+
+    const goal = await vscode.window.showInputBox({
+      prompt: "What should this accomplish?",
+      value: `Build ${name.trim()}`,
+      validateInput: (value) =>
+        value.trim() ? null : "Goal is required",
+    });
+    if (!goal) {
+      return;
+    }
+
+    const defaultBranch = defaultWorkBranchName(name.trim(), sourceBranch);
+    const branch = await vscode.window.showInputBox({
+      prompt: "New work branch on GitHub (never reuses an existing branch)",
+      value: defaultBranch,
+      validateInput: (value) =>
+        value.trim() ? null : "Branch name is required",
+    });
+    if (!branch) {
+      return;
+    }
 
     const updated = await workspaceService.startWorkFromBranch(active, {
       sourceBranch,
@@ -925,6 +1048,156 @@ async function archivePreview(): Promise<void> {
     await missionService.archivePreviewTest(workspace);
     await refreshAll();
     void vscode.window.showInformationMessage("Preview test archived.");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    void vscode.window.showErrorMessage(message);
+  }
+}
+
+async function startMultiAgentCrew(): Promise<void> {
+  let workspace = workspaceService.getActive();
+  if (!workspace) {
+    void vscode.window.showWarningMessage("No active workspace.");
+    return;
+  }
+
+  const gated = await ensureStructureAllowsAction(
+    workspaceService,
+    workspace,
+    "starting a multi-agent crew",
+  );
+  if (!gated) {
+    return;
+  }
+  workspace = gated;
+
+  try {
+    await missionService.startMultiAgentCrew(workspace);
+    await refreshAll();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    void vscode.window.showErrorMessage(message);
+  }
+}
+
+async function copyCrewLanePrompt(laneId?: string): Promise<void> {
+  const workspace = workspaceService.getActive();
+  if (!workspace?.activeCrew) {
+    void vscode.window.showWarningMessage("No active multi-agent crew.");
+    return;
+  }
+
+  let id = laneId;
+  if (!id) {
+    const picked = await vscode.window.showQuickPick(
+      workspace.activeCrew.lanes.map((lane) => ({
+        label: lane.title,
+        description: `${lane.role} · ${lane.status} · ${lane.root}`,
+        id: lane.id,
+      })),
+      { title: "Copy crew lane prompt", placeHolder: "Select a lane" },
+    );
+    if (!picked) {
+      return;
+    }
+    id = picked.id;
+  }
+
+  try {
+    await missionService.copyCrewLanePrompt(workspace, id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    void vscode.window.showErrorMessage(message);
+  }
+}
+
+async function setCrewLaneStatus(
+  laneId?: string,
+  status?: string,
+): Promise<void> {
+  const workspace = workspaceService.getActive();
+  if (!workspace?.activeCrew) {
+    void vscode.window.showWarningMessage("No active multi-agent crew.");
+    return;
+  }
+
+  let id = laneId;
+  if (!id) {
+    const picked = await vscode.window.showQuickPick(
+      workspace.activeCrew.lanes.map((lane) => ({
+        label: lane.title,
+        description: `${lane.role} · ${lane.status}`,
+        id: lane.id,
+      })),
+      { title: "Set crew lane status", placeHolder: "Select a lane" },
+    );
+    if (!picked) {
+      return;
+    }
+    id = picked.id;
+  }
+
+  let next = status;
+  if (
+    next !== "pending" &&
+    next !== "in_progress" &&
+    next !== "done"
+  ) {
+    const pickedStatus = await vscode.window.showQuickPick(
+      [
+        { label: "pending", value: "pending" as const },
+        { label: "in_progress", value: "in_progress" as const },
+        { label: "done", value: "done" as const },
+      ],
+      { title: "Lane status", placeHolder: "Select status" },
+    );
+    if (!pickedStatus) {
+      return;
+    }
+    next = pickedStatus.value;
+  }
+
+  try {
+    await missionService.setCrewLaneStatus(
+      workspace,
+      id,
+      next as "pending" | "in_progress" | "done",
+    );
+    await refreshAll();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    void vscode.window.showErrorMessage(message);
+  }
+}
+
+async function copyCrewIntegratorPrompt(): Promise<void> {
+  const workspace = workspaceService.getActive();
+  if (!workspace?.activeCrew) {
+    void vscode.window.showWarningMessage("No active multi-agent crew.");
+    return;
+  }
+
+  try {
+    await missionService.copyCrewIntegratorPrompt(workspace);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    void vscode.window.showErrorMessage(message);
+  }
+}
+
+async function archiveCrew(): Promise<void> {
+  const workspace = workspaceService.getActive();
+  if (!workspace?.activeCrew) {
+    void vscode.window.showWarningMessage(
+      "No active multi-agent crew to archive.",
+    );
+    return;
+  }
+
+  try {
+    await missionService.archiveCrew(workspace);
+    await refreshAll();
+    void vscode.window.showInformationMessage("Multi-agent crew archived.");
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     void vscode.window.showErrorMessage(message);

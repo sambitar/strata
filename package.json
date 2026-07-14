@@ -2,7 +2,7 @@
   "name": "strata",
   "displayName": "Strata",
   "description": "Work in workspaces, not branches. AI-native development coordination above Git.",
-  "version": "0.5.12",
+  "version": "0.6.0",
   "publisher": "strata",
   "license": "MIT",
   "repository": {
@@ -36,6 +36,11 @@
     "onCommand:strata.publish",
     "onCommand:strata.openDashboard",
     "onCommand:strata.testInDevMode",
+    "onCommand:strata.startMultiAgentCrew",
+    "onCommand:strata.archiveCrew",
+    "onCommand:strata.detectStructure",
+    "onCommand:strata.lockStructure",
+    "onCommand:strata.unlockStructure",
     "onCommand:strata.refresh"
   ],
   "main": "./dist/extension.js",
@@ -156,6 +161,43 @@
         "command": "strata.archivePreview",
         "title": "Strata: Archive Preview Test",
         "icon": "$(debug-stop)"
+      },
+      {
+        "command": "strata.startMultiAgentCrew",
+        "title": "Strata: Start Multi-Agent Crew",
+        "icon": "$(organization)"
+      },
+      {
+        "command": "strata.copyCrewLanePrompt",
+        "title": "Strata: Copy Crew Lane Prompt"
+      },
+      {
+        "command": "strata.setCrewLaneStatus",
+        "title": "Strata: Set Crew Lane Status"
+      },
+      {
+        "command": "strata.copyCrewIntegratorPrompt",
+        "title": "Strata: Copy Crew Integrator Prompt"
+      },
+      {
+        "command": "strata.archiveCrew",
+        "title": "Strata: Archive Multi-Agent Crew",
+        "icon": "$(archive)"
+      },
+      {
+        "command": "strata.detectStructure",
+        "title": "Strata: Detect Structure",
+        "icon": "$(file-tree)"
+      },
+      {
+        "command": "strata.lockStructure",
+        "title": "Strata: Lock Structure Contract",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "strata.unlockStructure",
+        "title": "Strata: Unlock Structure Contract",
+        "icon": "$(unlock)"
       }
     ],
     "menus": {
@@ -215,6 +257,12 @@
           "enum": ["copy", "symlink", "off"],
           "default": "copy",
           "description": "How Strata installs Cursor rules into .cursor/rules/ (copy, symlink, or off)"
+        },
+        "strata.structureEnforcement": {
+          "type": "string",
+          "enum": ["off", "warn", "block"],
+          "default": "warn",
+          "description": "How strictly to enforce the Structure Contract before create feature / start work / publish / multi-agent crew (off, warn, or block)"
         }
       }
     }

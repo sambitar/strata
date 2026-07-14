@@ -1,0 +1,29 @@
+---
+description: Strata core — trust code over documentation
+alwaysApply: true
+---
+
+# Source of Truth: Trust Code, Not Docs
+
+**All documentation might be outdated.** The only source of truth:
+
+1. **Actual codebase** — Code as it exists now
+2. **Live configuration** — Environment variables, configs as actually set
+3. **Running infrastructure** — How services actually behave
+4. **Actual logic flow** — What code actually does when executed
+
+When docs and reality disagree, **trust reality**. Verify by reading actual code, checking live configs, testing actual behavior.
+
+Example: README says "JWT tokens expire in 24 hours" but code has `TOKEN_EXPIRY = 3600` → trust code. Update docs after completing your task.
+
+**Workflow:** Read docs for intent → Verify against code/configs/behavior → Use reality → Update outdated docs.
+
+**Applies to:** READMEs, notes, guides, ADRs, Confluence, Jira, wikis, in-code comments, JSDoc, docstrings.
+
+**Documentation lives everywhere.** Check workspace `notes/`, `docs/`, `~/Documents/Documentation/`, project `.md` files, and in-code comments. All docs are context only — verify against code. The code never lies; documentation often does.
+
+For new code, document WHY decisions were made, not just WHAT.
+
+**Notes workflow:** Before research, search existing notes (may be outdated). After work, update existing notes rather than creating duplicates. Use format `YYYY-MM-DD-slug.md`.
+
+Use absolute paths for file operations.

@@ -18,10 +18,20 @@ import {
   normalizeStack,
   stacksEqual,
 } from "../models/stack";
+import type { StructureContract, StructureValidation } from "../models/structure";
+import {
+  normalizeStructure,
+  structureHasServices,
+  structuresEqual,
+} from "../models/structure";
 import { GitService } from "../git/git-service";
 import { MemoryService } from "./memory-service";
 import { RegistryStore } from "../storage/registry";
 import { StackDetectionService, type StackDetectionResult } from "./stack-detection-service";
+import {
+  StructureDetectionService,
+  type StructureDetectionResult,
+} from "./structure-detection-service";
 import { WorkspaceStore } from "../storage/workspace-store";
 import { ThemeService } from "../theme/theme-service";
 import type { RulesService } from "./rules-service";
@@ -30,6 +40,7 @@ export class WorkspaceService {
   private readonly registryStore = new RegistryStore();
   private readonly workspaceStore = new WorkspaceStore();
   private readonly stackDetectionService = new StackDetectionService();
+  private readonly structureDetectionService = new StructureDetectionService();
 
   constructor(
     private readonly gitService: GitService,
@@ -130,7 +141,11 @@ export class WorkspaceService {
     await this.applySwitchEffects(workspace, options?.skipOpenFolder);
     await this.syncRules(workspace);
     const { workspace: withStack } = this.syncStackFromProject(workspace, "fill");
-    return withStack;
+    const { workspace: withStructure } = this.syncStructureFromProject(
+      withStack,
+      "fill",
+    );
+    return withStructure;
   }
 
   async syncRules(workspace: Workspace): Promise<void> {
@@ -283,6 +298,131 @@ export class WorkspaceService {
 
   detectStack(repoPath: string): StackDetectionResult {
     return this.stackDetectionService.detect(repoPath);
+  }
+
+  updateStructure(
+    workspace: Workspace,
+    structure: StructureContract,
+  ): Workspace {
+    const config = this.workspaceStore.load(workspace.repoPath);
+    if (!config) {
+      throw new Error("Workspace configuration missing.");
+    }
+
+    const normalized = normalizeStructure(structure);
+    if (!normalized) {
+      throw new Error("Invalid structure contract.");
+    }
+
+    const updated = { ...config, structure: normalized };
+    this.workspaceStore.save(workspace.repoPath, updated);
+    this.memoryService.syncStructureInArchitecture(
+      workspace.repoPath,
+      config.name,
+      normalized,
+    );
+
+    const next = {
+      ...workspace,
+      ...updated,
+      repoPath: workspace.repoPath,
+      isActive: workspace.isActive,
+    };
+
+    if (this.rulesService) {
+      void this.rulesService.syncToRepo(workspace.repoPath, next);
+    }
+
+    return next;
+  }
+
+  syncStructureFromProject(
+    workspace: Workspace,
+    mode: "fill" | "overwrite" = "fill",
+  ): {
+    workspace: Workspace;
+    detection: StructureDetectionResult;
+    persisted: boolean;
+  } {
+    const detection = this.structureDetectionService.detect(workspace.repoPath);
+    if (!detection.hasProjectCode && !structureHasServices(workspace.structure)) {
+      return { workspace, detection, persisted: false };
+    }
+
+    let nextStructure: StructureContract;
+    if (mode === "overwrite") {
+      const prior = normalizeStructure(workspace.structure);
+      nextStructure = {
+        ...detection.structure,
+        status: prior?.status === "locked" ? "locked" : "draft",
+        lockedAt: prior?.status === "locked" ? prior.lockedAt : null,
+        notes: prior?.notes ?? "",
+      };
+    } else {
+      nextStructure = this.structureDetectionService.mergePreserveLock(
+        workspace.structure,
+        detection.structure,
+      );
+    }
+
+    const normalized = normalizeStructure(nextStructure);
+    if (!normalized) {
+      return { workspace, detection, persisted: false };
+    }
+
+    if (!structuresEqual(workspace.structure, normalized)) {
+      const updated = this.updateStructure(workspace, normalized);
+      return { workspace: updated, detection, persisted: true };
+    }
+
+    return {
+      workspace: { ...workspace, structure: normalized },
+      detection,
+      persisted: false,
+    };
+  }
+
+  lockStructure(workspace: Workspace): Workspace {
+    const { workspace: synced } = this.syncStructureFromProject(workspace, "fill");
+    const structure = normalizeStructure(synced.structure);
+    if (!structure || structure.services.length === 0) {
+      throw new Error(
+        "No services detected to lock. Add a package manifest or src/ tree first.",
+      );
+    }
+
+    const locked: StructureContract = {
+      ...structure,
+      status: "locked",
+      lockedAt: new Date().toISOString(),
+      detectedAt: structure.detectedAt || new Date().toISOString(),
+    };
+
+    return this.updateStructure(synced, locked);
+  }
+
+  unlockStructure(workspace: Workspace): Workspace {
+    const structure = normalizeStructure(workspace.structure);
+    if (!structure) {
+      throw new Error("No structure contract to unlock.");
+    }
+
+    return this.updateStructure(workspace, {
+      ...structure,
+      status: "draft",
+      lockedAt: null,
+    });
+  }
+
+  validateStructure(workspace: Workspace): StructureValidation {
+    return this.structureDetectionService.validate(
+      workspace.repoPath,
+      workspace.structure,
+    );
+  }
+
+  detectStructure(repoPath: string): StructureDetectionResult {
+    return this.structureDetectionService.detect(repoPath);
   }
 
   async createFeature(

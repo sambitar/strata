@@ -1,0 +1,19 @@
+---
+description: Strata core — workspace organization
+alwaysApply: true
+---
+
+# Workspace Organization
+
+**Patterns:** Project directories (active work, git repos), Documentation (notes, date-based `.md`), Temporary (`tmp/` — clean up after), Configuration, Credentials (`.env`).
+
+**Check current directory when switching workspaces.** Understand local organizational pattern before starting work.
+
+**Codebase cleanliness:**
+- Edit existing files; don't create duplicates unnecessarily
+- Clean up temp files when done
+- Use designated temp directories
+- Don't create markdown reports inside project codebases — explain in chat
+- Avoid cluttering with debug scripts or analysis reports; remove after use
+
+After significant work, update `.strata/memory/` rather than scattering notes across the repo.

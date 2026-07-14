@@ -1,6 +1,16 @@
+import type { StructureContract } from "./structure";
 import type { WorkspaceStack } from "./stack";
 
 export type { StackFieldKey, WorkspaceStack } from "./stack";
+export type {
+  StructureContract,
+  StructureContractStatus,
+  StructureDriftItem,
+  StructureLayout,
+  StructureService,
+  StructureServiceKind,
+  StructureValidation,
+} from "./structure";
 
 export type WorkspaceEnvironment =
   | "production"
@@ -88,17 +98,53 @@ export interface ActivePreview {
   }>;
 }
 
+export type CrewLaneRole =
+  | "planner"
+  | "frontend"
+  | "backend"
+  | "database"
+  | "service"
+  | "integrator";
+
+export type CrewLaneStatus = "pending" | "in_progress" | "done";
+
+export type CrewPhase = "plan" | "parallel" | "integrate" | "done";
+
+export interface CrewLane {
+  id: string;
+  role: CrewLaneRole;
+  title: string;
+  root: string;
+  serviceId?: string;
+  expectedPaths?: string[];
+  conventions?: string[];
+  status: CrewLaneStatus;
+  promptHint?: string;
+}
+
+export interface ActiveCrew {
+  id: string;
+  startedAt: string;
+  featureId?: string | null;
+  goal: string;
+  phase: CrewPhase;
+  lanes: CrewLane[];
+}
+
 export interface WorkspaceConfig {
   id: string;
   name: string;
   environment: WorkspaceEnvironment;
   currentGoal: string;
   stack?: WorkspaceStack | null;
+  /** Durable layout contract for agents — detect → lock → enforce. */
+  structure?: StructureContract | null;
   currentFeature?: Feature | null;
   workHistory?: WorkSession[];
   activeRefresh?: ActiveRefresh | null;
   activeRetro?: ActiveRetro | null;
   activePreview?: ActivePreview | null;
+  activeCrew?: ActiveCrew | null;
   git: WorkspaceGitConfig;
   ai: WorkspaceAiConfig;
   createdAt: string;

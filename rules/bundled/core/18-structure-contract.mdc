@@ -1,0 +1,21 @@
+---
+description: Strata structure contract — durable layout for agents
+alwaysApply: true
+---
+
+# Structure Contract
+
+Strata may lock a durable **structure contract** for this workspace (`structure` in `.strata/workspace.json`).
+
+When a contract is **locked** (or `strata-structure-contract.mdc` is present):
+
+1. Read service roots, expected paths, and conventions before placing new code.
+2. Extend existing services — do not invent parallel top-level app trees.
+3. Prefer detected layout (monolith / monorepo / multi-service) over ad-hoc folders.
+4. If the live tree drifts from the contract, stop and ask the user to re-detect / re-lock in Strata.
+5. Strata enforces the contract; Cursor agents generate the code.
+
+When the contract is **draft** or missing: detect from manifests and `src/` trees, propose a contract, and prefer locking before large features.
+
+Also mirror Structure details in `.strata/memory/architecture.md`.
+`);

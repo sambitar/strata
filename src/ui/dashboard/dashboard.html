@@ -187,6 +187,42 @@
       margin-bottom: 8px;
     }
     .mission-card.retro { border-left-color: #a855f7; }
+    .mission-card.crew { border-left-color: #0d9488; }
+    .crew-lane {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 0;
+      border-top: 1px solid var(--border);
+    }
+    .crew-lane:first-of-type { border-top: none; margin-top: 8px; }
+    .crew-lane-meta { font-size: 12px; color: var(--muted); }
+    .lane-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      background: #374151;
+      color: #e5e7eb;
+    }
+    .lane-status.pending { background: #374151; }
+    .lane-status.in_progress { background: #1e3a8a; color: #bfdbfe; }
+    .lane-status.done { background: #14532d; color: #bbf7d0; }
+    .crew-lane-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .crew-lane-actions button {
+      padding: 4px 10px;
+      font-size: 11px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      cursor: pointer;
+    }
+    .crew-lane-actions button:hover { border-color: var(--accent); }
     .stack-card {
       background: var(--card);
       border: 1px solid var(--border);
@@ -259,6 +295,55 @@
       margin-top: 4px;
     }
     .stack-field-hint.detected { color: #93c5fd; }
+    .structure-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .structure-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .structure-badge.locked {
+      background: #14532d;
+      color: #bbf7d0;
+      border-color: #166534;
+    }
+    .structure-badge.draft {
+      background: #1e3a8a;
+      color: #bfdbfe;
+      border-color: #1d4ed8;
+    }
+    .structure-badge.none {
+      background: var(--bg);
+    }
+    .structure-drift {
+      background: #7f1d1d;
+      color: #fecaca;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin: 12px 0;
+    }
+    .structure-drift ul {
+      margin: 8px 0 0 18px;
+      padding: 0;
+    }
+    .structure-service {
+      border-top: 1px solid var(--border);
+      padding: 10px 0;
+      font-size: 12px;
+    }
+    .structure-service:first-child { border-top: none; }
+    .structure-service strong { color: var(--fg); }
+    .structure-meta { color: var(--muted); font-size: 11px; margin-top: 4px; }
     .preview-card {
       background: var(--card);
       border: 1px solid var(--border);
@@ -325,6 +410,8 @@
       const safetySection = renderSafetySection(state);
       const historySection = renderWorkHistorySection(state);
       const missionsSection = renderMissionsSection(state);
+      const crewSection = renderCrewSection(state);
+      const structureSection = renderStructureSection(state);
       const stackSection = renderStackSection(state);
       const previewSection = renderPreviewSection(state);
 
@@ -348,11 +435,13 @@
         '</div>' +
         safetySection +
         missionsSection +
+        crewSection +
         previewSection +
         remoteSection +
         branchSection +
         historySection +
         featureSection +
+        structureSection +
         stackSection +
         '<section><h2>Current Goal</h2><div class="goal">' + escapeHtml(state.currentGoal) + '</div></section>' +
         '<section><h2>Status</h2><div class="status-grid">' +
@@ -432,12 +521,95 @@
         vscode.postMessage({ type: "saveStack", stack: stack });
       });
 
+      document.getElementById("btn-detect-structure")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "detectStructure", overwrite: false });
+      });
+      document.getElementById("btn-redetect-structure")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "detectStructure", overwrite: true });
+      });
+      document.getElementById("btn-lock-structure")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "lockStructure" });
+      });
+      document.getElementById("btn-unlock-structure")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "unlockStructure" });
+      });
+
       document.getElementById("btn-test-dev")?.addEventListener("click", () => {
         vscode.postMessage({ type: "testInDevMode" });
       });
       document.getElementById("btn-archive-preview")?.addEventListener("click", () => {
         vscode.postMessage({ type: "archivePreview" });
       });
+
+      document.getElementById("btn-start-crew")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "startMultiAgentCrew" });
+      });
+      document.getElementById("btn-archive-crew")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "archiveCrew" });
+      });
+      document.getElementById("btn-copy-integrator")?.addEventListener("click", () => {
+        vscode.postMessage({ type: "copyCrewIntegratorPrompt" });
+      });
+      document.querySelectorAll("[data-copy-lane]").forEach(function(el) {
+        el.addEventListener("click", function() {
+          vscode.postMessage({
+            type: "copyCrewLanePrompt",
+            laneId: el.getAttribute("data-copy-lane"),
+          });
+        });
+      });
+      document.querySelectorAll("[data-lane-status]").forEach(function(el) {
+        el.addEventListener("click", function() {
+          vscode.postMessage({
+            type: "setCrewLaneStatus",
+            laneId: el.getAttribute("data-lane-id"),
+            status: el.getAttribute("data-lane-status"),
+          });
+        });
+      });
+    }
+
+    function renderCrewSection(state) {
+      const crew = state.activeCrew;
+
+      if (!crew) {
+        return '<section><h2>Multi-Agent Crew</h2><div class="mission-card crew">' +
+          '<div class="preview-intro">Run Cursor-native parallel agents: Planner fills the contract, specialists work in separate Agents Window sessions (prefer worktrees), then Integrator merges.</div>' +
+          '<div class="preview-meta">Requires a locked Structure Contract. No CrewAI / SDK — clipboard prompts only.</div>' +
+          '<div class="actions" style="margin-top:12px">' +
+          '<button class="btn-primary" id="btn-start-crew">Start Multi-Agent Crew</button>' +
+          '</div></div></section>';
+      }
+
+      const lanes = (crew.lanes || []).map(function(lane) {
+        const statusClass = lane.status === "done"
+          ? "done"
+          : lane.status === "in_progress"
+            ? "in_progress"
+            : "pending";
+        return '<div class="crew-lane">' +
+          '<div><strong>' + escapeHtml(lane.title) + '</strong>' +
+          ' <span class="lane-status ' + statusClass + '">' + escapeHtml(lane.status) + '</span>' +
+          '<div class="crew-lane-meta">' + escapeHtml(lane.role) + ' · <code>' +
+          escapeHtml(lane.root) + '</code></div></div>' +
+          '<div class="crew-lane-actions">' +
+          '<button data-copy-lane="' + escapeHtml(lane.id) + '">Copy prompt</button>' +
+          '<button data-lane-id="' + escapeHtml(lane.id) + '" data-lane-status="in_progress">In progress</button>' +
+          '<button data-lane-id="' + escapeHtml(lane.id) + '" data-lane-status="done">Done</button>' +
+          '</div></div>';
+      }).join("");
+
+      return '<section><h2>Multi-Agent Crew</h2><div class="mission-card crew">' +
+        '<strong>Phase:</strong> ' + escapeHtml(crew.phase) +
+        '<br><span class="remote-meta">Started ' + escapeHtml(crew.startedAt) + '</span>' +
+        '<div class="preview-intro" style="margin-top:8px"><strong>Goal:</strong> ' +
+        escapeHtml(crew.goal) + '</div>' +
+        '<div class="preview-meta">Briefs: <code>.strata/crew/current.md</code> · Contract: <code>.strata/crew/contract.md</code></div>' +
+        lanes +
+        '<div class="actions" style="margin-top:12px">' +
+        '<button class="btn-secondary" id="btn-copy-integrator">Copy Integrator Prompt</button>' +
+        '<button class="btn-secondary" id="btn-archive-crew">Archive Crew</button>' +
+        '</div></div></section>';
     }
 
     function renderPreviewSection(state) {
@@ -467,6 +639,85 @@
         '<div class="actions" style="margin-top:12px">' +
         '<button class="btn-primary" id="btn-test-dev">Test in Dev Mode</button>' +
         '</div></div></section>';
+    }
+
+    function renderStructureSection(state) {
+      const structure = state.structure || {
+        status: "none",
+        layout: "unknown",
+        services: [],
+        ciPaths: [],
+        drift: [],
+        validationOk: false,
+        validationSummary: "No structure contract yet.",
+        sources: [],
+        autoSaved: false,
+      };
+
+      const status = structure.status || "none";
+      const badgeClass = status === "locked" ? "locked" : status === "draft" ? "draft" : "none";
+      const badgeLabel = status === "locked" ? "Locked" : status === "draft" ? "Draft" : "Not set";
+
+      const services = structure.services || [];
+      const serviceBlocks = services.length > 0
+        ? '<div style="margin-top:10px">' + services.map(function(service) {
+            const expected = (service.expectedPaths || []).slice(0, 8).map(function(p) {
+              return '<code>' + escapeHtml(p) + '</code>';
+            }).join(" ");
+            const conventions = (service.conventions || []).slice(0, 3).join(" · ");
+            return '<div class="structure-service">' +
+              '<strong>' + escapeHtml(service.name) + '</strong>' +
+              ' <span class="stack-chip">' + escapeHtml(service.kind) + '</span>' +
+              '<div class="structure-meta">Root: <code>' + escapeHtml(service.root) + '/</code></div>' +
+              (expected ? '<div class="structure-meta">Expected: ' + expected + '</div>' : '') +
+              (conventions ? '<div class="structure-meta">' + escapeHtml(conventions) + '</div>' : '') +
+              '</div>';
+          }).join("") + '</div>'
+        : '<div class="structure-meta" style="margin-top:10px">No services detected yet. Run Detect Structure after adding manifests or src/.</div>';
+
+      const ci = (structure.ciPaths || []).length > 0
+        ? '<div class="stack-summary" style="margin-top:12px">' +
+          structure.ciPaths.map(function(p) {
+            return '<span class="stack-chip"><strong>CI:</strong> ' + escapeHtml(p) + '</span>';
+          }).join("") + '</div>'
+        : '';
+
+      let driftBlock = "";
+      if (status === "locked" && !structure.validationOk && (structure.drift || []).length > 0) {
+        driftBlock = '<div class="structure-drift"><strong>Drift detected</strong> — ' +
+          escapeHtml(structure.validationSummary || "") +
+          '<ul>' +
+          structure.drift.slice(0, 8).map(function(item) {
+            return '<li>' + escapeHtml(item.message) + '</li>';
+          }).join("") +
+          '</ul></div>';
+      } else if (status === "locked" && structure.validationOk) {
+        driftBlock = '<div class="stack-detected-banner" style="background:#14532d;color:#bbf7d0">' +
+          escapeHtml(structure.validationSummary || "Structure OK.") + '</div>';
+      } else if (structure.autoSaved) {
+        driftBlock = '<div class="stack-detected-banner">Draft structure auto-saved from repo files' +
+          ((structure.sources || []).length ? ' (' + escapeHtml(structure.sources.join(", ")) + ')' : '') +
+          '.</div>';
+      }
+
+      const actions = status === "locked"
+        ? '<button class="btn-secondary" id="btn-redetect-structure">Re-detect</button>' +
+          '<button class="btn-secondary" id="btn-unlock-structure">Unlock</button>'
+        : '<button class="btn-secondary" id="btn-detect-structure">Detect Structure</button>' +
+          '<button class="btn-primary" id="btn-lock-structure">Lock Contract</button>';
+
+      return '<section><h2>Structure Contract' +
+        '<span class="structure-badge ' + badgeClass + '">' + badgeLabel + '</span></h2>' +
+        '<div class="structure-card">' +
+        '<div class="stack-intro">Durable layout for agents — detect from the repo, confirm with <strong>Lock Contract</strong>, then Strata warns on create/publish when the tree drifts. Cursor still generates code; Strata holds the contract.</div>' +
+        '<div class="structure-meta">Layout: <strong>' + escapeHtml(structure.layout || "unknown") + '</strong>' +
+        (structure.lockedAt ? ' · Locked ' + escapeHtml(String(structure.lockedAt).slice(0, 10)) : '') +
+        '</div>' +
+        driftBlock +
+        serviceBlocks +
+        ci +
+        '<div class="stack-actions">' + actions + '</div>' +
+        '</div></section>';
     }
 
     function renderStackSection(state) {

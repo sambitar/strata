@@ -1,0 +1,30 @@
+---
+description: Locked Strata structure contract — respect service roots
+alwaysApply: true
+---
+
+# Structure Contract (locked)
+
+**Layout:** monolith
+**Locked:** 2026-07-14T20:07:57.683Z
+
+This workspace has a durable structure contract. Treat it as source of truth for where code belongs.
+
+## Services
+
+- **strata** — root `./` (extension)
+  - Keep paths: `src`, `tsconfig.json`, `README.md`
+  - Conventions: VS Code / Cursor extension — keep src/ extension entrypoints
+
+## CI / workflows
+
+- _(none)_
+
+## Rules for agents
+
+1. Read `.strata/workspace.json` → `structure` and `.strata/memory/architecture.md` → Structure.
+2. Put new code under the matching service root — do not invent parallel top-level apps.
+3. Respect `expectedPaths` and conventions per service.
+4. If the repo shape has drifted from this contract, stop and ask the user to re-detect / re-lock in Strata rather than inventing a new layout.
+5. Leave generation to the editor agent; Strata only enforces the contract.
+

@@ -2,14 +2,18 @@ import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
-import type { ActivePreview, ActiveRefresh, ActiveRetro, WorkspaceConfig } from "../models/workspace";
+import type {
+  ActiveCrew,
+  ActivePreview,
+  ActiveRefresh,
+  ActiveRetro,
+  WorkspaceConfig,
+} from "../models/workspace";
+import { formatStructureBridgeBody } from "../models/structure";
 import {
   ensureDir,
   getGlobalRulesDir,
-  getPreviewDir,
-  getRefreshDir,
   getRepoCursorRulesDir,
-  getRetroDir,
   getStrataHome,
 } from "../storage/paths";
 
@@ -18,6 +22,8 @@ export type RulesInstallMode = "copy" | "symlink" | "off";
 const BRIDGE_REFRESH = "strata-active-refresh.mdc";
 const BRIDGE_RETRO = "strata-active-retro.mdc";
 const BRIDGE_PREVIEW = "strata-active-preview.mdc";
+const BRIDGE_CREW = "strata-active-crew.mdc";
+const BRIDGE_STRUCTURE = "strata-structure-contract.mdc";
 
 const SYNC_RULE_FILES = [
   { dir: "core", pattern: /\.mdc$/ },
@@ -25,6 +31,7 @@ const SYNC_RULE_FILES = [
   { file: "retro/retro-protocol.mdc" },
   { file: "requests/feature-spec-protocol.mdc" },
   { file: "preview/preview-protocol.mdc" },
+  { file: "crew/crew-protocol.mdc" },
 ];
 
 export class RulesService {
@@ -77,6 +84,10 @@ export class RulesService {
         continue;
       }
 
+      if (!("dir" in entry) || !entry.dir || !entry.pattern) {
+        continue;
+      }
+
       const coreDir = path.join(global, entry.dir);
       if (!fs.existsSync(coreDir)) {
         continue;
@@ -104,6 +115,8 @@ export class RulesService {
     const refreshPath = path.join(dest, BRIDGE_REFRESH);
     const retroPath = path.join(dest, BRIDGE_RETRO);
     const previewPath = path.join(dest, BRIDGE_PREVIEW);
+    const crewPath = path.join(dest, BRIDGE_CREW);
+    const structurePath = path.join(dest, BRIDGE_STRUCTURE);
 
     if (config?.activeRefresh) {
       fs.writeFileSync(
@@ -133,6 +146,26 @@ export class RulesService {
       );
     } else if (fs.existsSync(previewPath)) {
       fs.unlinkSync(previewPath);
+    }
+
+    if (config?.activeCrew) {
+      fs.writeFileSync(
+        crewPath,
+        this.buildCrewBridge(config.activeCrew),
+        "utf8",
+      );
+    } else if (fs.existsSync(crewPath)) {
+      fs.unlinkSync(crewPath);
+    }
+
+    if (config?.structure?.status === "locked") {
+      fs.writeFileSync(
+        structurePath,
+        this.buildStructureBridge(config),
+        "utf8",
+      );
+    } else if (fs.existsSync(structurePath)) {
+      fs.unlinkSync(structurePath);
     }
   }
 
@@ -222,6 +255,49 @@ After success, save recipes to \`.strata/preview/recipe.md\` per target root.
 `;
   }
 
+  private buildCrewBridge(crew: ActiveCrew): string {
+    const lanes =
+      crew.lanes.length > 0
+        ? crew.lanes
+            .map(
+              (lane) =>
+                `- **${lane.title}** (\`${lane.id}\`) — \`${lane.role}\` @ \`${lane.root}\` — ${lane.status}`,
+            )
+            .join("\n")
+        : "- _No lanes_";
+
+    return `---
+description: Active Strata Multi-Agent Crew — follow crew protocol
+alwaysApply: true
+---
+
+# Active Multi-Agent Crew
+
+**Started:** ${crew.startedAt}
+**Goal:** ${crew.goal}
+**Phase:** ${crew.phase}
+
+## Lanes
+
+${lanes}
+
+Read \`.strata/crew/current.md\` and \`.strata/crew/contract.md\`.
+
+Follow \`crew-protocol.mdc\`. Cursor Agents Window + worktrees for parallel specialists — do not serialize all lanes in one agent.
+`;
+  }
+
+  private buildStructureBridge(config: WorkspaceConfig): string {
+    const structure = config.structure!;
+    return `---
+description: Locked Strata structure contract — respect service roots
+alwaysApply: true
+---
+
+${formatStructureBridgeBody(structure)}
+`;
+  }
+
   private ensureAgentsMd(repoPath: string): void {
     const agentsPath = path.join(repoPath, "AGENTS.md");
     if (fs.existsSync(agentsPath)) {
@@ -234,9 +310,10 @@ Project context for AI agents. Managed by Strata.
 
 ## Before significant work
 
-- \`.strata/workspace.json\` — workspace config, goals, active missions
+- \`.strata/workspace.json\` — workspace config, goals, stack, structure contract, active missions
 - \`.strata/memory/\` — summary, todo, architecture, decisions
 - \`.cursor/rules/\` — Strata-synced Cursor rules
+- If \`structure.status\` is \`locked\` (or \`strata-structure-contract.mdc\` is present), keep new code inside declared service roots
 
 ## Branch safety
 

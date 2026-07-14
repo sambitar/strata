@@ -1,0 +1,33 @@
+---
+description: Strata core — search safety and investigation thoroughness
+alwaysApply: true
+---
+
+# Intelligent File & Content Searching
+
+Use bounded, specific searches. Cap result limits (`head_limit`). Specify paths when possible.
+
+Unbounded searches can loop infinitely — especially for files that don't exist. This causes resource exhaustion.
+
+**Grep modes:** `files_with_matches` (fastest), `content`, `count`.
+
+Progressive search: specific → directory → broader patterns → case-insensitive. If Glob/Grep returns nothing, don't retry the exact same search.
+
+## Investigation Thoroughness
+
+**No results ≠ proof of absence.** Before concluding "not found": explore directory structure, recursive glob `**/pattern`, alternative terms, parent directories.
+
+When you find a target file, look around — related files are usually nearby.
+
+**"File not found" after 2–3 attempts = "I didn't look hard enough."**
+
+## When User Corrects Search
+
+User says: "Look again" / "Search more thoroughly" / "You're missing something"
+
+1. Acknowledge: search was insufficient
+2. Escalate: `ls -lah`, recursive glob, check skipped subdirectories
+3. Question assumptions about structure or extensions
+4. Report with reflection: "Found in [location]. I should have [what I missed]."
+
+Never defend inadequate search. Never ask user for exact path when you have search tools.
