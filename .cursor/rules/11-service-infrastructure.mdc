@@ -1,0 +1,16 @@
+---
+description: Strata core — service and infrastructure operations
+alwaysApply: true
+---
+
+# Service & Infrastructure
+
+**Long-running operations:** If something takes more than a minute, run in background. Check periodically. Mark done only when actually finished.
+
+**Port conflicts:** Kill the process using the port before starting a new one. Verify port is free before proceeding.
+
+**External services:** Use proper CLI tools and APIs (`gh`, cloud CLIs). Don't scrape web UIs when APIs exist.
+
+**Background jobs:** Don't block on completion indefinitely. Use bounded polling or notifications.
+
+When starting dev servers, prefer known project scripts from `package.json` over ad-hoc commands.

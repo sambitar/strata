@@ -4,6 +4,8 @@ import type { Feature, MemoryFileName, WorkspaceConfig } from "../models/workspa
 import { MEMORY_FILES } from "../models/workspace";
 import type { WorkspaceStack } from "../models/stack";
 import { formatStackForArchitecture } from "../models/stack";
+import type { StructureContract } from "../models/structure";
+import { formatStructureForArchitecture } from "../models/structure";
 import { ensureDir, getMemoryDir } from "../storage/paths";
 
 function templateFor(file: MemoryFileName, config: WorkspaceConfig): string {
@@ -189,6 +191,39 @@ ${scopeLine}
       );
     } else {
       content = `${content.trim()}\n\n${stackBlock}`;
+    }
+
+    fs.writeFileSync(archPath, content, "utf8");
+  }
+
+  syncStructureInArchitecture(
+    repoPath: string,
+    workspaceName: string,
+    structure: StructureContract,
+  ): void {
+    ensureDir(getMemoryDir(repoPath));
+    const archPath = path.join(getMemoryDir(repoPath), "architecture.md");
+    const structureBlock = formatStructureForArchitecture(structure);
+
+    if (!fs.existsSync(archPath)) {
+      fs.writeFileSync(
+        archPath,
+        `# ${workspaceName} — Architecture\n\n${structureBlock}`,
+        "utf8",
+      );
+      return;
+    }
+
+    let content = fs.readFileSync(archPath, "utf8");
+    const structureHeading = /^## Structure\b/m;
+
+    if (structureHeading.test(content)) {
+      content = content.replace(
+        /^## Structure\b[\s\S]*?(?=^## |\Z)/m,
+        structureBlock.trimEnd() + "\n\n",
+      );
+    } else {
+      content = `${content.trim()}\n\n${structureBlock}`;
     }
 
     fs.writeFileSync(archPath, content, "utf8");

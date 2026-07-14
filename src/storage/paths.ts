@@ -66,3 +66,7 @@ export function getRequestsDir(repoPath: string): string {
 export function getPreviewDir(repoPath: string): string {
   return path.join(repoPath, ".strata", "preview");
 }
+
+export function getCrewDir(repoPath: string): string {
+  return path.join(repoPath, ".strata", "crew");
+}

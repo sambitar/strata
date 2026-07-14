@@ -68,6 +68,18 @@ export type DashboardMessage =
             fileCount: number;
           }>;
         } | null;
+        activeCrew: {
+          goal: string;
+          phase: string;
+          startedAt: string;
+          lanes: Array<{
+            id: string;
+            title: string;
+            role: string;
+            root: string;
+            status: string;
+          }>;
+        } | null;
         stack: Partial<Record<StackFieldKey, string | null>>;
         stackFields: Array<{
           key: StackFieldKey;
@@ -79,12 +91,46 @@ export type DashboardMessage =
         stackDetectedFromProject: boolean;
         stackAutoSaved: boolean;
         stackFieldSources: Partial<Record<StackFieldKey, "saved" | "detected">>;
+        structure: {
+          status: "draft" | "locked" | "none";
+          layout: string;
+          lockedAt: string | null;
+          detectedAt: string | null;
+          sources: string[];
+          services: Array<{
+            id: string;
+            name: string;
+            root: string;
+            kind: string;
+            expectedPaths: string[];
+            conventions: string[];
+            libraries: string[];
+          }>;
+          ciPaths: string[];
+          notes: string;
+          validationOk: boolean;
+          validationSummary: string;
+          drift: Array<{
+            path: string;
+            issue: string;
+            message: string;
+          }>;
+          autoSaved: boolean;
+        };
       };
     }
   | { type: "saveStack"; stack: Partial<Record<StackFieldKey, string>> }
   | { type: "detectStack"; overwrite?: boolean }
+  | { type: "detectStructure"; overwrite?: boolean }
+  | { type: "lockStructure" }
+  | { type: "unlockStructure" }
   | { type: "testInDevMode" }
   | { type: "archivePreview" }
+  | { type: "startMultiAgentCrew" }
+  | { type: "archiveCrew" }
+  | { type: "copyCrewLanePrompt"; laneId: string }
+  | { type: "setCrewLaneStatus"; laneId: string; status: string }
+  | { type: "copyCrewIntegratorPrompt" }
   | { type: "syncRules" }
   | { type: "newRefresh" }
   | { type: "archiveRefresh" }

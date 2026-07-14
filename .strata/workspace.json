@@ -5,11 +5,11 @@
   "currentGoal": "Build Enforce Structure",
   "git": {
     "trunk": "main",
-    "branch": "work/2026-07-14-enforce-structure-from-main",
+    "branch": "work/2026-07-14-multi-agent-crew-from-main",
     "remote": "origin"
   },
   "ai": {
-    "lastActiveAt": "2026-07-14T17:33:45.679Z"
+    "lastActiveAt": "2026-07-14T20:07:57.683Z"
   },
   "createdAt": "2026-07-14T17:11:02.892Z",
   "stack": {
@@ -34,6 +34,50 @@
     "branch": "work/2026-07-14-enforce-structure-from-main",
     "sourceBranch": "main",
     "startedAt": "2026-07-14T17:33:45.679Z",
-    "status": "active"
+    "status": "published",
+    "prUrl": "https://github.com/sambitar/strata/pull/1",
+    "lastPushSha": "07661458a2baccfff39a1442f0a65d219ed9600b",
+    "lastSyncedAt": "2026-07-14T17:36:14.489Z"
+  },
+  "structure": {
+    "version": 1,
+    "status": "locked",
+    "detectedAt": "2026-07-14T20:30:30.092Z",
+    "lockedAt": "2026-07-14T20:07:57.683Z",
+    "sources": [
+      "package.json"
+    ],
+    "layout": "monolith",
+    "services": [
+      {
+        "id": "root",
+        "name": "strata",
+        "root": ".",
+        "kind": "extension",
+        "manifests": [
+          "package.json"
+        ],
+        "expectedPaths": [
+          "src",
+          "tsconfig.json",
+          "README.md"
+        ],
+        "conventions": [
+          "VS Code / Cursor extension — keep src/ extension entrypoints"
+        ],
+        "libraries": [
+          "react",
+          "react-dom",
+          "@types/node",
+          "@types/react",
+          "@types/react-dom",
+          "@types/vscode",
+          "@vscode/vsce",
+          "typescript"
+        ]
+      }
+    ],
+    "ciPaths": [],
+    "notes": "VS Code / Cursor extension — keep product code under src/; leave generation to Cursor agents."
   }
 }

@@ -173,6 +173,46 @@ export class DashboardPanel {
         );
         break;
       }
+      case "detectStructure": {
+        const { workspace: updated, persisted } =
+          this.workspaceService.syncStructureFromProject(
+            workspace,
+            msg.overwrite ? "overwrite" : "fill",
+          );
+        await this.pushState(updated);
+        void vscode.window.showInformationMessage(
+          persisted
+            ? "Structure detected from the repo and saved as a draft contract."
+            : "Structure detection complete — no new changes to save.",
+        );
+        break;
+      }
+      case "lockStructure": {
+        try {
+          const updated = this.workspaceService.lockStructure(workspace);
+          await this.pushState(updated);
+          void vscode.window.showInformationMessage(
+            "Structure contract locked. Agents will treat service roots as durable.",
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          void vscode.window.showErrorMessage(message);
+        }
+        break;
+      }
+      case "unlockStructure": {
+        try {
+          const updated = this.workspaceService.unlockStructure(workspace);
+          await this.pushState(updated);
+          void vscode.window.showInformationMessage(
+            "Structure contract unlocked (draft). Re-lock when ready.",
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          void vscode.window.showErrorMessage(message);
+        }
+        break;
+      }
       case "testInDevMode":
         await vscode.commands.executeCommand("strata.testInDevMode");
         break;
@@ -184,6 +224,34 @@ export class DashboardPanel {
           const message = err instanceof Error ? err.message : String(err);
           void vscode.window.showErrorMessage(message);
         }
+        break;
+      case "startMultiAgentCrew":
+        await vscode.commands.executeCommand("strata.startMultiAgentCrew");
+        break;
+      case "archiveCrew":
+        try {
+          const updated = await this.missionService.archiveCrew(workspace);
+          await this.pushState(updated);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          void vscode.window.showErrorMessage(message);
+        }
+        break;
+      case "copyCrewLanePrompt":
+        await vscode.commands.executeCommand(
+          "strata.copyCrewLanePrompt",
+          msg.laneId,
+        );
+        break;
+      case "setCrewLaneStatus":
+        await vscode.commands.executeCommand(
+          "strata.setCrewLaneStatus",
+          msg.laneId,
+          msg.status,
+        );
+        break;
+      case "copyCrewIntegratorPrompt":
+        await vscode.commands.executeCommand("strata.copyCrewIntegratorPrompt");
         break;
     }
   }
@@ -197,6 +265,15 @@ export class DashboardPanel {
     const { workspace: synced, detection, persisted } =
       this.workspaceService.syncStackFromProject(workspace, "fill");
     workspace = synced;
+
+    const {
+      workspace: structureSynced,
+      persisted: structureAutoSaved,
+    } = this.workspaceService.syncStructureFromProject(workspace, "fill");
+    workspace = structureSynced;
+    const structureValidation =
+      this.workspaceService.validateStructure(workspace);
+    const structure = workspace.structure ?? null;
 
     const status = await this.statusService.getStatus(workspace);
     const memoryFiles = this.memoryService.list(workspace.repoPath);
@@ -279,6 +356,20 @@ export class DashboardPanel {
               })),
             }
           : null,
+        activeCrew: workspace.activeCrew
+          ? {
+              goal: workspace.activeCrew.goal,
+              phase: workspace.activeCrew.phase,
+              startedAt: workspace.activeCrew.startedAt,
+              lanes: workspace.activeCrew.lanes.map((lane) => ({
+                id: lane.id,
+                title: lane.title,
+                role: lane.role,
+                root: lane.root,
+                status: lane.status,
+              })),
+            }
+          : null,
         stack: workspace.stack ?? {},
         stackFields: STACK_FIELD_DEFINITIONS.map((field) => ({
           key: field.key,
@@ -290,6 +381,32 @@ export class DashboardPanel {
         stackDetectedFromProject: detection.hasProjectCode,
         stackAutoSaved: persisted,
         stackFieldSources: stackFieldSources(savedStack, detection.stack),
+        structure: {
+          status: structure?.status ?? "none",
+          layout: structure?.layout ?? "unknown",
+          lockedAt: structure?.lockedAt ?? null,
+          detectedAt: structure?.detectedAt ?? null,
+          sources: structure?.sources ?? [],
+          services: (structure?.services ?? []).map((service) => ({
+            id: service.id,
+            name: service.name,
+            root: service.root,
+            kind: service.kind,
+            expectedPaths: service.expectedPaths,
+            conventions: service.conventions,
+            libraries: service.libraries,
+          })),
+          ciPaths: structure?.ciPaths ?? [],
+          notes: structure?.notes ?? "",
+          validationOk: structureValidation.ok,
+          validationSummary: structureValidation.summary,
+          drift: structureValidation.drift.map((item) => ({
+            path: item.path,
+            issue: item.issue,
+            message: item.message,
+          })),
+          autoSaved: structureAutoSaved,
+        },
       },
     } satisfies DashboardMessage);
   }

@@ -2,6 +2,9 @@
 .vscode-test/**
 src/**
 node_modules/**
+.strata/**
+.cursor/**
+*.vsix
 .gitignore
 esbuild.js
 tsconfig.json

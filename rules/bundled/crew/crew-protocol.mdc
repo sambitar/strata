@@ -1,0 +1,64 @@
+---
+description: Strata Multi-Agent Crew — planner, parallel specialists, integrator (Cursor-native)
+alwaysApply: false
+---
+
+# Strata Multi-Agent Crew Protocol
+
+Use when `.strata/crew/current.md` exists or `strata-active-crew.mdc` is present. This is **Cursor-native parallelism**: separate Agents Window sessions (prefer worktrees), not one agent doing every lane.
+
+Read `.strata/crew/current.md`, `.strata/crew/contract.md`, and your lane brief under `.strata/crew/lanes/<id>.md`.
+
+Respect the locked Structure Contract (`strata-structure-contract.mdc` / `structure` in `.strata/workspace.json`).
+
+---
+
+## Phase Plan (Planner — serial)
+
+You own **only** the shared contract. Do **not** implement product features.
+
+1. Read goal, structure services, stack, and lane table in `current.md`.
+2. Fill `.strata/crew/contract.md`: APIs, schemas, shared types, ownership boundaries, acceptance criteria.
+3. Prefer Cursor **Plan** mode for this phase.
+4. Stop when the contract is complete enough for specialists to work without inventing shared interfaces.
+
+**Output:** Updated `contract.md` + short ownership table. Ask the user to mark Planner `done` in Strata Dashboard.
+
+---
+
+## Phase Parallel (Specialists — concurrent)
+
+Run each specialist in a **separate** Agents Window agent. Prefer `/worktree` or Agents Window worktrees so agents do not overwrite each other.
+
+For your lane only:
+
+1. Read `contract.md` and `.strata/crew/lanes/<your-id>.md`.
+2. Edit **only** your `root` and expected paths. Do not touch other lanes' trees.
+3. If the contract must change, **stop** and report — do not silently revise the shared contract.
+4. Match project conventions (lint, naming, tests for your surface).
+
+Use `/multitask` only for independent subtasks **inside** your lane.
+
+**Output:** Working changes for your lane. Ask the user to mark your lane `done` in the Dashboard.
+
+---
+
+## Phase Integrate (Integrator — serial)
+
+After specialist lanes are done:
+
+1. Read `contract.md`, lane briefs, and remaining diffs / worktrees.
+2. Merge or apply worktree results; resolve conflicts; wire integration points.
+3. Run relevant tests/lints; fix end-to-end gaps.
+4. Update `.strata/memory/todo.md` (and decisions/summary if significant).
+
+**Output:** Integrated branch ready for Preview / Publish. Ask the user to mark Integrator `done` and archive the crew.
+
+---
+
+## Hard rules
+
+- Contract before parallel codegen.
+- One owner per path — never invent parallel top-level apps outside the structure contract.
+- No CrewAI / external orchestrators required — Cursor Agents Window is the runtime.
+- Refresh/Retro active → defer crew work until those missions are archived.

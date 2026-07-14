@@ -2,15 +2,20 @@ import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 import type {
+  ActiveCrew,
   ActivePreview,
   ActiveRefresh,
   ActiveRetro,
+  CrewLane,
+  CrewLaneStatus,
   Workspace,
 } from "../models/workspace";
 import { ENVIRONMENT_LABELS } from "../models/workspace";
 import type { PreviewTarget, PreviewWorkset } from "../models/preview-workset";
+import { CrewLaneService } from "./crew-lane-service";
 import { PreviewWorksetService } from "./preview-workset-service";
 import {
+  getCrewDir,
   getPreviewDir,
   getRefreshDir,
   getRetroDir,
@@ -23,6 +28,7 @@ import { newMissionId, RulesService } from "./rules-service";
 export class MissionService {
   private readonly workspaceStore = new WorkspaceStore();
   private readonly worksetService = new PreviewWorksetService();
+  private readonly crewLaneService = new CrewLaneService();
 
   constructor(private readonly rulesService: RulesService) {}
 
@@ -330,6 +336,373 @@ export class MissionService {
     this.workspaceStore.save(workspace.repoPath, updated);
     await this.rulesService.syncToRepo(workspace.repoPath, updated);
     return updated;
+  }
+
+  async startMultiAgentCrew(workspace: Workspace): Promise<Workspace> {
+    if (workspace.activeCrew) {
+      throw new Error(
+        "A multi-agent crew is already active. Archive it first.",
+      );
+    }
+
+    if (workspace.activeRefresh) {
+      throw new Error(
+        "A refresh mission is active. Archive it before starting a crew.",
+      );
+    }
+
+    if (workspace.activeRetro) {
+      throw new Error(
+        "A retro session is active. Archive it before starting a crew.",
+      );
+    }
+
+    if (!workspace.structure || workspace.structure.status !== "locked") {
+      throw new Error(
+        "Lock a Structure Contract before starting a multi-agent crew.",
+      );
+    }
+
+    this.rulesService.ensureGlobalRules();
+
+    const startedAt = new Date().toISOString();
+    const goal =
+      workspace.currentFeature?.goal ||
+      workspace.currentGoal ||
+      "Implement the current feature with parallel Cursor agents";
+    const lanes = this.crewLaneService.deriveLanes(workspace);
+
+    const crew: ActiveCrew = {
+      id: newMissionId("crew"),
+      startedAt,
+      featureId: workspace.currentFeature?.id ?? null,
+      goal,
+      phase: "plan",
+      lanes,
+    };
+
+    const crewDir = getCrewDir(workspace.repoPath);
+    const lanesDir = path.join(crewDir, "lanes");
+    ensureDir(crewDir);
+    ensureDir(path.join(crewDir, "archive"));
+    ensureDir(lanesDir);
+
+    this.writeCrewMissionFiles(workspace, crew);
+
+    const updated = {
+      ...workspace,
+      activeCrew: crew,
+    };
+    this.workspaceStore.save(workspace.repoPath, updated);
+    await this.rulesService.syncToRepo(workspace.repoPath, updated);
+
+    const currentPath = path.join(crewDir, "current.md");
+    const doc = await vscode.workspace.openTextDocument(currentPath);
+    await vscode.window.showTextDocument(doc, { preview: false });
+
+    await this.copyCrewPromptAndNotify(
+      this.buildPlannerPrompt(crew),
+      "Multi-agent crew started — Planner prompt copied. Paste into chat (Plan mode OK). After the contract is filled, copy specialist prompts into separate Agents Window sessions (prefer worktrees).",
+      true,
+    );
+
+    return updated;
+  }
+
+  async archiveCrew(workspace: Workspace): Promise<Workspace> {
+    if (!workspace.activeCrew) {
+      throw new Error("No active multi-agent crew to archive.");
+    }
+
+    const crewDir = getCrewDir(workspace.repoPath);
+    const archiveDir = path.join(crewDir, "archive");
+    ensureDir(archiveDir);
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const prefix = `${stamp}-${workspace.activeCrew.id}`;
+
+    for (const name of ["current.md", "contract.md"] as const) {
+      const src = path.join(crewDir, name);
+      if (fs.existsSync(src)) {
+        fs.renameSync(src, path.join(archiveDir, `${prefix}-${name}`));
+      }
+    }
+
+    const lanesDir = path.join(crewDir, "lanes");
+    if (fs.existsSync(lanesDir)) {
+      const laneArchive = path.join(archiveDir, `${prefix}-lanes`);
+      ensureDir(laneArchive);
+      for (const name of fs.readdirSync(lanesDir)) {
+        fs.renameSync(
+          path.join(lanesDir, name),
+          path.join(laneArchive, name),
+        );
+      }
+    }
+
+    const updated = {
+      ...workspace,
+      activeCrew: null,
+    };
+    this.workspaceStore.save(workspace.repoPath, updated);
+    await this.rulesService.syncToRepo(workspace.repoPath, updated);
+    return updated;
+  }
+
+  async setCrewLaneStatus(
+    workspace: Workspace,
+    laneId: string,
+    status: CrewLaneStatus,
+  ): Promise<Workspace> {
+    if (!workspace.activeCrew) {
+      throw new Error("No active multi-agent crew.");
+    }
+
+    const lanes = workspace.activeCrew.lanes.map((lane) =>
+      lane.id === laneId ? { ...lane, status } : lane,
+    );
+    if (!lanes.some((lane) => lane.id === laneId)) {
+      throw new Error(`Unknown crew lane: ${laneId}`);
+    }
+
+    const phase = this.crewLaneService.derivePhase(lanes);
+    const crew: ActiveCrew = {
+      ...workspace.activeCrew,
+      lanes,
+      phase,
+    };
+
+    this.writeCrewMissionFiles(workspace, crew);
+
+    const updated = {
+      ...workspace,
+      activeCrew: crew,
+    };
+    this.workspaceStore.save(workspace.repoPath, updated);
+    await this.rulesService.syncToRepo(workspace.repoPath, updated);
+    return updated;
+  }
+
+  async copyCrewLanePrompt(
+    workspace: Workspace,
+    laneId: string,
+  ): Promise<void> {
+    if (!workspace.activeCrew) {
+      throw new Error("No active multi-agent crew.");
+    }
+
+    const lane = workspace.activeCrew.lanes.find((l) => l.id === laneId);
+    if (!lane) {
+      throw new Error(`Unknown crew lane: ${laneId}`);
+    }
+
+    let prompt: string;
+    if (lane.role === "planner") {
+      prompt = this.buildPlannerPrompt(workspace.activeCrew);
+    } else if (lane.role === "integrator") {
+      prompt = this.buildIntegratorPrompt(workspace.activeCrew);
+    } else {
+      prompt = this.buildSpecialistPrompt(workspace.activeCrew, lane);
+    }
+
+    await this.copyCrewPromptAndNotify(
+      prompt,
+      `${lane.title} prompt copied — paste into a Cursor Agents Window session` +
+        (lane.role !== "planner" && lane.role !== "integrator"
+          ? " (prefer /worktree)."
+          : "."),
+      false,
+    );
+  }
+
+  async copyCrewIntegratorPrompt(workspace: Workspace): Promise<void> {
+    if (!workspace.activeCrew) {
+      throw new Error("No active multi-agent crew.");
+    }
+
+    const integrator = workspace.activeCrew.lanes.find(
+      (lane) => lane.role === "integrator",
+    );
+    if (!integrator) {
+      throw new Error("Crew has no integrator lane.");
+    }
+
+    await this.copyCrewLanePrompt(workspace, integrator.id);
+  }
+
+  private writeCrewMissionFiles(
+    workspace: Workspace,
+    crew: ActiveCrew,
+  ): void {
+    const crewDir = getCrewDir(workspace.repoPath);
+    const lanesDir = path.join(crewDir, "lanes");
+    ensureDir(crewDir);
+    ensureDir(lanesDir);
+
+    const structure = workspace.structure!;
+    const ownershipRows = crew.lanes
+      .filter((lane) => lane.role !== "planner" && lane.role !== "integrator")
+      .map((lane) => `| ${lane.title} | ${lane.id} | root \`${lane.root}\` |`)
+      .join("\n");
+
+    const missionTemplate = this.rulesService.getTemplatePath(
+      "crew/templates/crew-mission.md",
+    );
+    const missionContent = this.rulesService.renderTemplate(missionTemplate, {
+      startedAt: crew.startedAt,
+      workspaceName: workspace.name,
+      branch: workspace.git.branch,
+      environment: ENVIRONMENT_LABELS[workspace.environment],
+      phase: crew.phase,
+      goal: crew.goal,
+      featureSummary: workspace.currentFeature
+        ? `${workspace.currentFeature.name} — ${workspace.currentFeature.goal} (branch: ${workspace.currentFeature.branch})`
+        : "None — crew scoped to workspace goal",
+      featureScope: workspace.currentFeature?.scope?.length
+        ? workspace.currentFeature.scope.map((s) => `- \`${s}\``).join("\n")
+        : "_No explicit scope globs._",
+      structureLayout: structure.layout,
+      structureServices: structure.services
+        .map((s) => `- **${s.name}** (\`${s.id}\`) @ \`${s.root}\` — ${s.kind}`)
+        .join("\n"),
+      stackSummary: this.formatStackSummary(workspace),
+      lanesTable: this.crewLaneService.formatLanesTable(crew.lanes),
+      lanesDetail: this.crewLaneService.formatLaneList(crew.lanes),
+    });
+    fs.writeFileSync(path.join(crewDir, "current.md"), missionContent, "utf8");
+
+    const contractPath = path.join(crewDir, "contract.md");
+    if (!fs.existsSync(contractPath)) {
+      const contractTemplate = this.rulesService.getTemplatePath(
+        "crew/templates/contract-stub.md",
+      );
+      const contractContent = this.rulesService.renderTemplate(
+        contractTemplate,
+        {
+          goal: crew.goal,
+          startedAt: crew.startedAt,
+          ownershipRows:
+            ownershipRows || "| Shared | planner | Define before parallel |",
+          acceptanceStub: crew.goal,
+        },
+      );
+      fs.writeFileSync(contractPath, contractContent, "utf8");
+    }
+
+    const laneTemplate = this.rulesService.getTemplatePath(
+      "crew/templates/lane.md",
+    );
+    for (const lane of crew.lanes) {
+      const expectedPaths =
+        lane.expectedPaths && lane.expectedPaths.length > 0
+          ? lane.expectedPaths.map((p) => `- \`${p}\``).join("\n")
+          : "- _none specified_";
+      const conventions =
+        lane.conventions && lane.conventions.length > 0
+          ? lane.conventions.map((c) => `- ${c}`).join("\n")
+          : "- _none specified_";
+
+      const laneContent = this.rulesService.renderTemplate(laneTemplate, {
+        laneTitle: lane.title,
+        laneId: lane.id,
+        laneRole: lane.role,
+        laneRoot: lane.root,
+        laneStatus: lane.status,
+        promptHint: lane.promptHint ?? "_Follow crew protocol for this role._",
+        expectedPaths,
+        conventions,
+        goal: crew.goal,
+      });
+      fs.writeFileSync(
+        path.join(lanesDir, `${lane.id}.md`),
+        laneContent,
+        "utf8",
+      );
+    }
+  }
+
+  private buildPlannerPrompt(crew: ActiveCrew): string {
+    return `Follow the Strata Multi-Agent Crew Protocol (crew-protocol.mdc).
+
+You are the Planner for this crew. Read:
+- .strata/crew/current.md
+- .strata/crew/lanes/planner.md
+- .strata/crew/contract.md (fill this — stub today)
+- .strata/workspace.json → structure (locked)
+
+Goal: ${crew.goal}
+Phase: ${crew.phase}
+
+Your job (serial — do NOT implement product features):
+1. Prefer Cursor Plan mode.
+2. Fill .strata/crew/contract.md with APIs, schemas, shared types, ownership, and acceptance criteria.
+3. Keep specialists able to work in parallel without inventing shared interfaces.
+4. Stop when the contract is ready. Ask the user to mark Planner done in the Strata Dashboard.`;
+  }
+
+  private buildSpecialistPrompt(crew: ActiveCrew, lane: CrewLane): string {
+    return `Follow the Strata Multi-Agent Crew Protocol (crew-protocol.mdc).
+
+You are the ${lane.title} specialist (\`${lane.id}\`, role \`${lane.role}\`).
+
+Read:
+- .strata/crew/current.md
+- .strata/crew/contract.md (must already be filled by Planner)
+- .strata/crew/lanes/${lane.id}.md
+- Locked structure / strata-structure-contract.mdc
+
+Goal: ${crew.goal}
+Your root: \`${lane.root}\`
+${lane.promptHint ? `Hint: ${lane.promptHint}` : ""}
+
+Rules:
+1. Run in a separate Agents Window agent — prefer /worktree so you do not collide with other lanes.
+2. Edit ONLY your root and expected paths. Do not change the shared contract; stop and report if it must change.
+3. Implement against the locked contract. Match project conventions.
+4. When finished, ask the user to mark lane \`${lane.id}\` done in the Strata Dashboard.`;
+  }
+
+  private buildIntegratorPrompt(crew: ActiveCrew): string {
+    const specialty = crew.lanes
+      .filter((lane) => lane.role !== "planner" && lane.role !== "integrator")
+      .map((lane) => `- ${lane.title} (\`${lane.id}\`): ${lane.status}`)
+      .join("\n");
+
+    return `Follow the Strata Multi-Agent Crew Protocol (crew-protocol.mdc).
+
+You are the Integrator. Read:
+- .strata/crew/current.md
+- .strata/crew/contract.md
+- Lane briefs under .strata/crew/lanes/
+- Current diffs / worktrees from specialists
+
+Goal: ${crew.goal}
+Specialist lane status:
+${specialty || "- (none)"}
+
+Your job (serial):
+1. Merge or apply specialist work; resolve conflicts.
+2. Wire integration points to match the contract.
+3. Run relevant tests/lints; fix end-to-end gaps.
+4. Update .strata/memory/todo.md (and decisions/summary if significant).
+5. Ask the user to mark Integrator done and archive the crew in Strata.`;
+  }
+
+  private async copyCrewPromptAndNotify(
+    prompt: string,
+    message: string,
+    openChat: boolean,
+  ): Promise<void> {
+    await vscode.env.clipboard.writeText(prompt);
+
+    if (openChat) {
+      try {
+        await vscode.commands.executeCommand("workbench.action.chat.open");
+      } catch {
+        // chat may be unavailable in some hosts
+      }
+    }
+
+    void vscode.window.showInformationMessage(message);
   }
 
   private formatStackSummary(workspace: Workspace): string {

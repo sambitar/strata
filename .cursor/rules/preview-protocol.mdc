@@ -1,0 +1,83 @@
+---
+description: Strata Preview — agent decides how to run dev mode for manual testing
+alwaysApply: false
+---
+
+# Strata Preview Protocol
+
+When the user wants to **test their work in dev mode**, you decide how to preview this project. Do not assume a single layout — discover first.
+
+Read `.strata/preview/current.md` for workspace context, active feature, and what the user is testing.
+
+---
+
+## Phase 0: Discover (read-only)
+
+1. Read `.strata/preview/current.md` — **Selected targets** and **Preview scope** are locked. Do not preview apps outside that list.
+2. Read `.strata/workspace.json`, `.strata/memory/architecture.md`, and touched files listed in current.md.
+3. For **each selected target root only**, read its manifest scripts — do not scan unrelated monorepo apps.
+4. Note the **correct working directory** per target (the target `root` field — e.g. `web`, `backend`).
+
+**Output:** Short plan per selected target — command, cwd, URL (or verify path). Skip unselected apps entirely.
+
+---
+
+## Multi-target sessions
+
+When the user selected **more than one** app (e.g. web + backend):
+
+| Order | Rule |
+|---|---|
+| 1 | Start **backend / API** first if selected |
+| 2 | Start **web** second if selected |
+| 3 | **Mobile** — simulators only if mobile is in selected targets |
+| 4 | One external browser tab per **web** target |
+
+If only **web** is selected, do **not** start backend unless current.md explicitly includes it.
+
+---
+
+## Phase 1: Execute
+
+1. Start the dev server in a **terminal** using the correct **cwd** — never `cd subdir && cmd` if the terminal is already in that subdir.
+2. Prefer project scripts (`npm run dev`, `composer run dev`, `uvicorn …`, `php artisan serve`, etc.) over inventing commands.
+3. If multiple services are required (API + web), start what is needed for the user's test focus, or explain what must run.
+4. Wait until the service responds before opening a browser.
+
+---
+
+## Phase 2: Open for manual testing
+
+| Project type | Action |
+|---|---|
+| **Web / SSR UI** | Open the dev URL in the user's **external browser** (not Simple Browser unless they ask). Use `xdg-open`, `open`, or report the exact URL clearly. |
+| **API with docs** | Open `/docs`, `/swagger`, or Redoc URL in external browser. |
+| **Extension** | Guide F5 / Extension Development Host; build first if needed. |
+| **Mobile** | Run the project's simulator/expo script; no browser. |
+| **Library / CLI / no UI** | Run tests or a demo command; report pass/fail output. |
+
+---
+
+## Phase 3: Handoff
+
+1. Tell the user: URL, terminal name, how to stop the server.
+2. Append a **recipe** to `.strata/preview/recipe.md` (create if missing):
+
+```markdown
+## Last successful preview ({date})
+- **Cwd:** ...
+- **Command:** ...
+- **URL:** ...
+- **Notes:** ...
+```
+
+Next time, read `recipe.md` first — reuse if still valid, re-discover if not.
+
+---
+
+## Rules
+
+- **User asked to test** — this is manual QA, not shipping. Do not publish or commit unless asked.
+- **No hardcoded ports** — read config, script flags, or terminal output for the actual URL.
+- **Monorepos** — preview the app matching the active feature scope when obvious; ask if ambiguous.
+- If preview fails, diagnose and retry with a revised plan — do not give up after one wrong `cd`.

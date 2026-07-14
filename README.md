@@ -19,6 +19,20 @@ Work in workspaces, not branches. Strata is a VS Code / Cursor extension that si
 | **Cursor rules** | Core engineering standards synced to `.cursor/rules/` on every workspace |
 | **Agent missions** | Refresh (RCA), Retro, Feature Request — scoped agent protocols |
 | **Tech stack** | Auto-detect from manifests (monorepo-aware); saved to workspace + architecture memory |
+| **Structure contract** | Detect service roots / CI paths → lock a durable layout → warn or block on drift before feature/publish |
+
+---
+
+## v0.6 — Enforce Structure
+
+Durable **structure contract** for agents (inspired by the lesson that NL→software fails without an explicit layout):
+
+- **Detect** — Scan manifests and known app folders (`web/`, `backend/`, `apps/*`, `packages/*`, …) plus CI workflows
+- **Lock** — Persist `structure` in `.strata/workspace.json`, mirror into `architecture.md`, write `strata-structure-contract.mdc` for Cursor
+- **Enforce** — Before Create Feature / Start Work / Publish: warn (default) or block when unlocked or drifted (`strata.structureEnforcement`)
+- **Dashboard** — Structure Contract section with services, expected paths, drift, Lock / Unlock / Re-detect
+
+Strata holds the contract; Cursor still generates the code.
 
 ---
 
@@ -34,7 +48,8 @@ Work in workspaces, not branches. Strata is a VS Code / Cursor extension that si
 - **New Refresh (RCA)** — Root-cause analysis protocol (Phase 0–6); writes `.strata/refresh/current.md` and activates mission rules
 - **Run Retro** — Session retro protocol for doctrine evolution after features ship
 - **New Feature Request** — Feature spec protocol before implementation
-- **Archive** — Archive refresh/retro sessions when done
+- **Multi-Agent Crew** — Cursor-native parallel lanes (Planner → specialists in Agents Window / worktrees → Integrator). Writes `.strata/crew/`, copyable prompts, requires locked Structure Contract. No CrewAI / SDK.
+- **Archive** — Archive refresh/retro/crew sessions when done
 
 ### Technology stack
 - **Auto-detect** — Scans `package.json`, `composer.json`, Python manifests; supports monorepos (`web/`, `backend/`, `mobile/`, etc.)
@@ -44,6 +59,7 @@ Work in workspaces, not branches. Strata is a VS Code / Cursor extension that si
 ### Dashboard UX (v0.5.5+)
 - Streamlined **Actions** — Create Feature, Publish, Resume/Archive Work, Connect GitHub
 - **Agent Missions** section — Refresh, Retro, Feature Request buttons
+- **Multi-Agent Crew** card — start crew, copy lane prompts, mark lane status, archive
 - Auto-detect stack on dashboard open
 
 ---
@@ -109,6 +125,9 @@ Work in workspaces, not branches. Strata is a VS Code / Cursor extension that si
 | Strata: New Refresh (RCA) | Start root-cause debug mission |
 | Strata: Run Retro | Start retro session |
 | Strata: New Feature Request | Scaffold feature spec mission |
+| Strata: Detect Structure | Propose structure contract from the repo |
+| Strata: Lock Structure Contract | Lock durable service roots for agents |
+| Strata: Unlock Structure Contract | Return contract to draft |
 | Strata: Open Dashboard | Workspace dashboard webview |
 
 ---
@@ -123,17 +142,18 @@ Work in workspaces, not branches. Strata is a VS Code / Cursor extension that si
 
 ```
 .strata/
-├── workspace.json          # environment, goal, stack, feature, missions
+├── workspace.json          # environment, goal, stack, structure, feature, missions
 ├── memory/
 │   ├── summary.md
 │   ├── todo.md
-│   ├── architecture.md
+│   ├── architecture.md     # includes Stack + Structure sections
 │   └── decisions.md
 ├── refresh/                # active RCA missions
 ├── retro/                  # retro sessions
 └── requests/               # feature request specs
 
 .cursor/rules/              # synced Cursor rules (when enabled)
+                            # + strata-structure-contract.mdc when locked
 ```
 
 ---
@@ -146,6 +166,7 @@ Work in workspaces, not branches. Strata is a VS Code / Cursor extension that si
 | `strata.openDashboardOnSwitch` | `true` | Open dashboard when switching workspaces |
 | `strata.autoCreatePr` | `true` | Create GitHub PR after publish (requires `gh`) |
 | `strata.rulesInstallMode` | `copy` | How rules install: `copy`, `symlink`, or `off` |
+| `strata.structureEnforcement` | `warn` | Structure gate: `off`, `warn`, or `block` |
 
 ---
 
@@ -177,12 +198,12 @@ Install locally:
 
 ```bash
 npm run package
-cursor --install-extension strata-0.5.8.vsix --force
+cursor --install-extension strata-0.6.0.vsix --force
 ```
 
 ---
 
 ## Roadmap
 
-- **v0.6** — Workspace cards, Docker/service detection, tasks
+- **v0.7** — Workspace cards, richer Docker/service detection, tasks
 - **v1.0** — GitHub App, cloud sync, worktrees, team features

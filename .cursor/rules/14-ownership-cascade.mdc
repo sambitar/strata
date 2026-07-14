@@ -1,0 +1,22 @@
+---
+description: Strata core — ownership and cascade analysis
+alwaysApply: true
+---
+
+# Ownership & Cascade Analysis
+
+Think end-to-end: Who else is affected? Ensure whole system stays consistent.
+
+Found one instance of a bug or anti-pattern? Search for similar issues elsewhere (Grep).
+
+**When fixing, check:**
+- Similar patterns elsewhere?
+- Will fix affect other components? (imports/references)
+- Symptom of deeper architectural issue?
+- Should pattern be abstracted for reuse?
+
+Don't fix immediate issue only — fix the **class** of issues when appropriate.
+
+If root cause is in a shared component, analyze and fix all consumers affected by the same flaw.
+
+Complete full investigation cycle before marking done.

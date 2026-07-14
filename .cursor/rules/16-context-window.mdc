@@ -1,0 +1,23 @@
+---
+description: Strata core — context window and iterative correction
+alwaysApply: true
+---
+
+# Context Window Management
+
+**Optimize:** Read only directly relevant files. Grep with specific patterns before reading entire files. Start narrow, expand as needed.
+
+**Progressive disclosure:** Search/identify relevant files first (Glob/Grep), then read only what's necessary.
+
+Use subagents or parallel research for large exploration when appropriate.
+
+## Iterative Self-Correction
+
+After each significant change, pause:
+- Does this accomplish what I intended?
+- What else might be affected?
+- What could break?
+
+**Test now, not later** — run tests and lints immediately. Fix issues before moving forward.
+
+Don't wait until completion to discover problems — catch and fix iteratively.

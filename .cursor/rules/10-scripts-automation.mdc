@@ -1,0 +1,32 @@
+---
+description: Strata core — scripts and automation growth
+alwaysApply: true
+---
+
+# Scripts & Automation Growth
+
+The workspace should get smarter over time. When you solve something once, make it reusable.
+
+**Before manual work, check what exists:** `scripts/` directory and README index. Database/, git/, api-wrappers/ subdirs.
+
+**If a tool exists → use it. If not and task is repetitive → create it.**
+
+## When to Build Reusable Tools
+
+Create scripts when:
+- Task will probably happen again
+- Calling external API with credentials from `.env`
+- Multi-step task that could be automated
+- Useful for future you or teammates
+
+Don't create for: one-off tasks, things belonging in project repo only, simple single commands.
+
+## Pattern Over Time
+
+First time: manual curl/API call is fine.
+If you'll repeat it: wrap in `scripts/api-wrappers/` and document in `scripts/README.md`.
+Next time: run the script.
+
+Organize: `scripts/database/`, `scripts/git/`, `scripts/api-wrappers/`, standalone in `scripts/`.
+
+Each session should leave useful tools for the next one.
