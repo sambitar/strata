@@ -37,18 +37,6 @@ VS Code / Cursor extension — keep product code under src/; leave generation to
 
 ## Notes
 
-VS Code / Cursor extension — keep product code under src/; leave generation to Cursor agents.
-
-## Notes
-
-VS Code / Cursor extension — keep product code under src/; leave generation to Cursor agents.
-
-## Notes
-
-VS Code / Cursor extension — keep product code under src/; leave generation to Cursor agents.
-
-## Notes
-
 VS Code / Cursor extension — keep product code under `src/`; leave generation to Cursor agents.
 
 ## Stack
@@ -69,4 +57,4 @@ VS Code / Cursor extension — keep product code under `src/`; leave generation 
 ## Git
 
 - Trunk: `main`
-- Branch: `work/2026-07-14-enforce-structure-from-main`
+- Branch: `work/2026-07-14-multi-agent-crew-from-main`
